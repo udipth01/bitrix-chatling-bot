@@ -2,7 +2,7 @@ import httpx
 from chatling import get_chatling_response
 from utils import get_bot_token
 
-BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.com/rest"
+BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.in/rest"
 
 async def handle_bitrix_event(payload):
     event = payload.get("event")

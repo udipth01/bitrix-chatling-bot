@@ -9,3 +9,7 @@ async def bitrix_webhook(request: Request):
     payload = await request.json()
     response = await handle_bitrix_event(payload)
     return response
+
+@app.get("/")
+def health():
+    return {"status": "alive"}

@@ -1,6 +1,6 @@
 import httpx
 
-CHATLING_API_URL = "https://api.chatling.ai/v2/query"
+CHATLING_API_URL = "https://api.chatling.ai/v1/query"
 CHATLING_BOT_ID = "4367189383"
 CHATLING_API_KEY = "KfWnpNXL3LJ8f8872g898SP5J179DN6zyJUT488AxVW35QGl4LCS6prek7F1v3V3"
 

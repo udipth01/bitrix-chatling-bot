@@ -1,29 +1,36 @@
 import httpx
 from chatling import get_chatling_response
 
-# ✅ Use your permanent webhook (no auth param needed)
+# ✅ Permanent webhook URL
 BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.in/rest/24/79r2m74ous5yme5r/"
 
-async def handle_bitrix_event(payload):
-    event = payload.get("event")
-    dialog_id = payload.get("data", {}).get("PARAMS", {}).get("DIALOG_ID")
-    message = payload.get("data", {}).get("PARAMS", {}).get("MESSAGE")
+# ✅ Your Bot credentials
+BOT_ID = 77148   # Replace with your actual bot ID
+CLIENT_ID = "jdg3syzhve9ve7vv93dv4y3gs5bc31mo"  # From Bitrix24 bot settings
 
+async def handle_bitrix_event(event: str, dialog_id: str, message: str):
+    """
+    Process Bitrix event: forward user message to Chatling, get reply, 
+    then send reply back into the chat.
+    """
     if event == "ONIMBOTMESSAGEADD" and dialog_id and message:
-        # Ask Chatling for a reply
         reply = await get_chatling_response(message, session_id=dialog_id)
-        # Send reply back to Bitrix chat
         await send_message_to_bitrix(dialog_id, reply)
-        return {"status": "ok"}
+        return {"status": "ok", "reply": reply}
 
     return {"status": "ignored"}
 
-async def send_message_to_bitrix(dialog_id, message):
-    async with httpx.AsyncClient() as client:
+async def send_message_to_bitrix(dialog_id: str, message: str):
+    """
+    Send bot message back to Bitrix chat.
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
-                f"{BITRIX_WEBHOOK_URL}im.message.add.json",
+                f"{BITRIX_WEBHOOK_URL}imbot.message.add.json",
                 json={
+                    "BOT_ID": BOT_ID,
+                    "CLIENT_ID": CLIENT_ID,
                     "DIALOG_ID": dialog_id,
                     "MESSAGE": message
                 }

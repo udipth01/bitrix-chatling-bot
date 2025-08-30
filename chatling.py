@@ -5,7 +5,10 @@ CHATLING_BOT_ID = "4367189383"
 CHATLING_API_KEY = "KfWnpNXL3LJ8f8872g898SP5J179DN6zyJUT488AxVW35QGl4LCS6prek7F1v3V3"
 
 async def get_chatling_response(user_message: str, session_id: str = "default-session"):
-    async with httpx.AsyncClient() as client:
+    """
+    Send message to Chatling and return AI reply.
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.post(
                 CHATLING_API_URL,
@@ -20,7 +23,15 @@ async def get_chatling_response(user_message: str, session_id: str = "default-se
                 }
             )
             response.raise_for_status()
-            return response.json().get("reply", "No reply found.")
+            data = response.json()
+            # 🔍 Adjusted parsing since Chatling wraps response
+            reply = (
+                data.get("reply")
+                or data.get("answer")
+                or data.get("data", {}).get("answer")
+                or data.get("data", {}).get("reply")
+            )
+            return reply or "No reply from Chatling."
         except httpx.HTTPStatusError as e:
             return f"Chatling API error: {e.response.status_code} - {e.response.text}"
         except Exception as e:

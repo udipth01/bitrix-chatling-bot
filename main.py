@@ -32,6 +32,7 @@ async def bitrix_webhook(request: Request):
     message = parsed.get("data[PARAMS][MESSAGE]", [""])[0].strip()
     dialog_id = parsed.get("data[PARAMS][DIALOG_ID]", [""])[0]
     user_id = parsed.get("data[PARAMS][FROM_USER_ID]", [""])[0]
+    work_position = parsed.get("data[USER][WORK_POSITION]", [None])[0]
 
     logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}, User ID: {user_id}")
 
@@ -41,6 +42,13 @@ async def bitrix_webhook(request: Request):
             logger.info(f"Ignoring ONIMBOTMESSAGEADD with empty message for dialog {dialog_id}")
             return {"status": "ignored", "reason": "empty message"}
 
+        # 🔹 NEW: skip internal users
+        if work_position:
+            logger.info(
+                f"Skipping Chatling call because message is from internal user {user_id} (position: {work_position})"
+            )
+            return {"status": "ignored", "reason": "internal user"}
+        
         # Optional: filter for specific keywords
         # if "hello chatbot" in message.lower():
         logger.info(f"Processing message for dialog {dialog_id}")

@@ -1,20 +1,20 @@
 import httpx
 from chatling import get_chatling_response
 
-# ✅ Permanent webhook URL
+# Permanent webhook URL
 BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.in/rest/24/79r2m74ous5yme5r/"
 
-# ✅ Your Bot credentials
-BOT_ID = 77148   # Replace with your actual bot ID
-CLIENT_ID = "jdg3syzhve9ve7vv93dv4y3gs5bc31mo"  # From Bitrix24 bot settings
+# Bot credentials
+BOT_ID = 77148
+CLIENT_ID = "jdg3syzhve9ve7vv93dv4y3gs5bc31mo"
 
-async def handle_bitrix_event(event: str, dialog_id: str, message: str):
+async def handle_bitrix_event(event: str, dialog_id: str, message: str, user_id: str = None):
     """
     Process Bitrix event: forward user message to Chatling, get reply, 
     then send reply back into the chat.
     """
     if event == "ONIMBOTMESSAGEADD" and dialog_id and message:
-        reply = await get_chatling_response(message, session_id=dialog_id)
+        reply = await get_chatling_response(message, session_id=dialog_id, user_id=user_id)
         await send_message_to_bitrix(dialog_id, reply)
         return {"status": "ok", "reply": reply}
 

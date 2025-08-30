@@ -15,7 +15,7 @@ async def get_chatling_response(
     user_message: str,
     session_id: str = "default-session",
     user_id: str = None,
-    ai_model_id: int = None,
+    ai_model_id: int = 8,
     language_id: int = None,
     temperature: float = None
 ):

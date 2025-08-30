@@ -17,6 +17,13 @@ CHATLING_API_URL = f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/ai/kb
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    logger.error("Supabase credentials not found. Please check your .env file.")
+else:
+    logger.info(f"Supabase URL loaded: {SUPABASE_URL}")
+    logger.info(f"Supabase Key present: {bool(SUPABASE_KEY)}")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 async def get_chatling_response(
@@ -27,15 +34,19 @@ async def get_chatling_response(
     temperature: float = None,
     bitrix_dialog_id: str = None
 ):
-    # Check Supabase for existing conversation
-    result = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
-    data = result.data
-    conversation_id = data[0]["chatling_conversation_id"] if data and len(data) > 0 else None
-    if conversation_id:
-        logger.info(f"Found existing conversation: {conversation_id} for {bitrix_dialog_id}")
-    else:
-        logger.info(f"No conversation found for {bitrix_dialog_id}, Chatling will create a new one.")
+    try:
+        # Check Supabase for existing conversation
+        result = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+        logger.info(f"Supabase select result: {result}")
 
+        if result.data and len(result.data) > 0:
+            conversation_id = result.data[0]["chatling_conversation_id"]
+            logger.info(f"Found existing conversation: {conversation_id} for {bitrix_dialog_id}")
+        else:
+            logger.info(f"No conversation found for {bitrix_dialog_id}, Chatling will create a new one.")
+    except Exception as e:
+        logger.error(f"Error fetching from Supabase: {str(e)}")
+    
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             payload = {
@@ -73,12 +84,15 @@ async def get_chatling_response(
             # Save new conversation ID if Chatling created one
             new_conversation_id = data.get("conversation_id")
             if new_conversation_id and not conversation_id:
-                supabase.table("chat_mapping").insert({
-                    "bitrix_dialog_id": bitrix_dialog_id,
-                    "chatling_conversation_id": new_conversation_id
-                }).execute()
-                logger.info(f"New conversation created: {new_conversation_id} stored for {bitrix_dialog_id}")
-                conversation_id = new_conversation_id
+                try:
+                    supabase.table("chat_mapping").insert({
+                        "bitrix_dialog_id": bitrix_dialog_id,
+                        "chatling_conversation_id": new_conversation_id
+                    }).execute()
+                    logger.info(f"New conversation created: {new_conversation_id} stored for {bitrix_dialog_id}")
+                    conversation_id = new_conversation_id
+                except Exception as e:
+                    logger.error(f"Error inserting into Supabase: {str(e)}")
 
             reply = data.get("data", {}).get("response", "No reply from Chatling.")
             return reply

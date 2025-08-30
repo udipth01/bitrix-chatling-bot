@@ -86,12 +86,11 @@ async def get_chatling_response(
             new_conversation_id = data.get("conversation_id")
             if new_conversation_id and not conversation_id:
                 try:
-                    supabase.table("chat_mapping").insert({
+                    insert_result = supabase.table("chat_mapping").upsert({
                         "bitrix_dialog_id": bitrix_dialog_id,
                         "chatling_conversation_id": new_conversation_id
                     }).execute()
-                    logger.info(f"New conversation created: {new_conversation_id} stored for {bitrix_dialog_id}")
-                    conversation_id = new_conversation_id
+                    logger.info(f"Supabase insert/upsert result: {insert_result}")
                 except Exception as e:
                     logger.error(f"Error inserting into Supabase: {str(e)}")
 

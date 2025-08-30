@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request
 from urllib.parse import parse_qs
 import logging
-
+from dotenv import load_dotenv
 from bitrix import handle_bitrix_event
+
+load_dotenv()  # This loads variables from .env into os.environ
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)

@@ -16,17 +16,19 @@ async def bitrix_webhook(request: Request):
     """
     body_bytes = await request.body()
     body_str = body_bytes.decode("utf-8", errors="replace")
+    logger.info(f"Raw body from Bitrix: {body_str}")
+
     parsed = parse_qs(body_str)
+    logger.info(f"Parsed form data from Bitrix: {parsed}")
 
     event = parsed.get("event", [""])[0]
     message = parsed.get("data[PARAMS][MESSAGE]", [""])[0]
     dialog_id = parsed.get("data[PARAMS][DIALOG_ID]", [""])[0]
     user_id = parsed.get("data[PARAMS][FROM_USER_ID]", [""])[0]
 
-    logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}")
+    logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}, User ID: {user_id}")
 
     if event == "ONIMBOTMESSAGEADD" and message:
-        # Only trigger Chatling if message contains "hello chatbot"
         if "hello chatbot" in message.lower():
             response = await handle_bitrix_event(event, dialog_id, message, user_id=user_id)
         else:

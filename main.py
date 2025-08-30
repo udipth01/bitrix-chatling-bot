@@ -50,22 +50,22 @@ async def bitrix_webhook(request: Request):
             return {"status": "ignored", "reason": "internal user"}
         
         # Optional: filter for specific keywords
-        # if "hello chatbot" in message.lower():
-        logger.info(f"Processing message for dialog {dialog_id}")
-        try:
-            response = await handle_bitrix_event(
-                event=event,
-                dialog_id=dialog_id,
-                message=message,
-                user_id=user_id
-            )
-            return response
-        except Exception as e:
-            logger.error(f"Error handling Bitrix event: {str(e)}")
-            return {"status": "error", "reason": str(e)}
-        # else:
-        #     logger.info(f"Message ignored due to keyword filter: {message}")
-        #     return {"status": "ignored", "reason": "keyword not found"}
+        if "hello chatbot" in message.lower():
+            logger.info(f"Processing message for dialog {dialog_id}")
+            try:
+                response = await handle_bitrix_event(
+                    event=event,
+                    dialog_id=dialog_id,
+                    message=message,
+                    user_id=user_id
+                )
+                return response
+            except Exception as e:
+                logger.error(f"Error handling Bitrix event: {str(e)}")
+                return {"status": "error", "reason": str(e)}
+        else:
+            logger.info(f"Message ignored due to keyword filter: {message}")
+            return {"status": "ignored", "reason": "keyword not found"}
 
     # Ignore non-message events
     logger.info(f"Ignoring non-message event {event} for dialog {dialog_id}")

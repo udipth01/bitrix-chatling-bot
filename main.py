@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from bitrix import handle_bitrix_event
 import sys
 from supabase import create_client
+import os
 
 load_dotenv()
 

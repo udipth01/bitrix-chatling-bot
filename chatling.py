@@ -80,12 +80,7 @@ async def get_chatling_response(
                 logger.info(f"New conversation created: {new_conversation_id} stored for {bitrix_dialog_id}")
                 conversation_id = new_conversation_id
 
-            reply = (
-                data.get("output_text")
-                or data.get("reply")
-                or data.get("message")
-                or "No reply from Chatling."
-            )
+            reply = data.get("data", {}).get("response", "No reply from Chatling.")
             return reply
 
         except httpx.HTTPStatusError as e:

@@ -34,6 +34,7 @@ async def get_chatling_response(
     temperature: float = None,
     bitrix_dialog_id: str = None
 ):
+    conversation_id = None
     try:
         # Check Supabase for existing conversation
         result = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", bitrix_dialog_id).execute()

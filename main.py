@@ -4,6 +4,7 @@ import logging
 from dotenv import load_dotenv
 from bitrix import handle_bitrix_event
 import sys
+from supabase import create_client
 
 load_dotenv()
 
@@ -36,11 +37,34 @@ async def bitrix_webhook(request: Request):
 
     logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}, User ID: {user_id}")
 
+        # 🔹 Detect HiddenMessage (whisper mode)
+    component_id = parsed.get("data[PARAMS][PARAMS][COMPONENT_ID]", [""])[0]
+    if component_id == "HiddenMessage":
+        if message.lower() == "stop auto":
+            supabase.table("chat_mapping").update({"chat_status": "stopped"}).eq("bitrix_dialog_id", dialog_id).execute()
+            logger.info(f"Chat {dialog_id} set to STOPPED")
+            return {"status": "ok", "action": "stop auto"}
+        elif message.lower() == "start auto":
+            supabase.table("chat_mapping").update({"chat_status": "active"}).eq("bitrix_dialog_id", dialog_id).execute()
+            logger.info(f"Chat {dialog_id} set to ACTIVE")
+            return {"status": "ok", "action": "start auto"}
+        else:
+            logger.info(f"Ignored hidden message: {message}")
+            return {"status": "ignored", "reason": "other hidden message"}
+
     # Handle only real messages
     if event == "ONIMBOTMESSAGEADD":
         if not message:
             logger.info(f"Ignoring ONIMBOTMESSAGEADD with empty message for dialog {dialog_id}")
             return {"status": "ignored", "reason": "empty message"}
+        
+        # Check if auto mode stopped
+        record = supabase.table("chat_mapping").select("chat_status").eq("bitrix_dialog_id", dialog_id).execute()
+        chat_status = record.data[0]["chat_status"] if record.data else "active"
+
+        if chat_status == "stopped":
+            logger.info(f"Chat {dialog_id} is in STOPPED mode, ignoring message")
+            return {"status": "ignored", "reason": "auto stopped"}
 
         # 🔹 NEW: skip internal users
         if work_position:

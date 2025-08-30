@@ -83,7 +83,7 @@ async def get_chatling_response(
             data = response.json()
 
             # Save new conversation ID if Chatling created one
-            new_conversation_id = data.get("conversation_id")
+            new_conversation_id = data.get("data", {}).get("conversation_id")
             if new_conversation_id and not conversation_id:
                 try:
                     insert_result = supabase.table("chat_mapping").upsert({

@@ -33,7 +33,13 @@ async def bitrix_webhook(request: Request):
     logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}")
 
     if event == "ONIMBOTMESSAGEADD" and message:
-        response = await handle_bitrix_event(event, dialog_id, message)
+        # response = await handle_bitrix_event(event, dialog_id, message)
+        # return response
+        if "hello chatbot" in message.lower():
+            response = await handle_bitrix_event(event, dialog_id, message)
+        else:
+            # Optional: reply with a prompt if keyword not found
+            response = {"status": "ignored", "reason": "keyword not found"}
         return response
 
     return {"status": "ignored", "reason": "non-message event or empty message"}

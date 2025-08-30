@@ -3,11 +3,9 @@ import logging
 import json
 import os
 from dotenv import load_dotenv
-
 from supabase import create_client, Client
 
 load_dotenv()  
-
 
 logger = logging.getLogger("chatling")
 logging.basicConfig(level=logging.INFO)
@@ -21,53 +19,30 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-async def create_chatling_conversation(user_id: str = None):
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        payload = {}
-        if user_id:
-            payload["user_id"] = str(user_id)
-        headers = {
-            "Authorization": f"Bearer {CHATLING_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        response = await client.post(
-            f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/ai/kb/conversation",
-            headers=headers,
-            json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["conversation_id"]
-
-
 async def get_chatling_response(
     user_message: str,
-    session_id: str = "default-session",
     user_id: str = None,
     ai_model_id: int = 8,
     language_id: int = None,
     temperature: float = None,
     bitrix_dialog_id: str = None
 ):
+    # Check Supabase for existing conversation
     result = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
     data = result.data
-    if data and len(data) > 0:
-        conversation_id = data[0]["chatling_conversation_id"]
+    conversation_id = data[0]["chatling_conversation_id"] if data and len(data) > 0 else None
+    if conversation_id:
         logger.info(f"Found existing conversation: {conversation_id} for {bitrix_dialog_id}")
     else:
-        conversation_id = await create_chatling_conversation(user_id=user_id)
-        supabase.table("chat_mapping").insert({
-            "bitrix_dialog_id": bitrix_dialog_id,
-            "chatling_conversation_id": conversation_id
-        }).execute()
-        logger.info(f"No conversation found for {bitrix_dialog_id}, creating new one.")
+        logger.info(f"No conversation found for {bitrix_dialog_id}, Chatling will create a new one.")
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             payload = {
-                "message": user_message,
-                "conversation_id": conversation_id,
+                "message": user_message
             }
+            if conversation_id:
+                payload["conversation_id"] = conversation_id
             if user_id:
                 payload["user_id"] = str(user_id)
             if ai_model_id:
@@ -89,13 +64,21 @@ async def get_chatling_response(
 
             response = await client.post(CHATLING_API_URL, headers=headers, json=payload)
 
-            # Log raw response
             logger.info(f"Response status: {response.status_code}")
             logger.info(f"Response body: {response.text}")
 
             response.raise_for_status()
             data = response.json()
 
+            # Save new conversation ID if Chatling created one
+            new_conversation_id = data.get("conversation_id")
+            if new_conversation_id and not conversation_id:
+                supabase.table("chat_mapping").insert({
+                    "bitrix_dialog_id": bitrix_dialog_id,
+                    "chatling_conversation_id": new_conversation_id
+                }).execute()
+                logger.info(f"New conversation created: {new_conversation_id} stored for {bitrix_dialog_id}")
+                conversation_id = new_conversation_id
 
             reply = (
                 data.get("output_text")

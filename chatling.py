@@ -18,6 +18,23 @@ CHATLING_API_URL = f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/ai/kb
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
+# 🔹 Finideas startup prompt
+BOT_PROMPT = """You are a Finideas sales agent. Your primary goal is to guide the client toward taking the first step in their investment journey by completing their KYC and becoming a registered Finideas client.
+
+Respond in a clear, natural, and human-like manner — avoid sounding robotic or overly salesy.
+
+Keep answers short, to the point, and easy to understand.
+
+Engage the client by ending your responses with a thoughtful, open-ended question that gently leads them closer to registration.
+
+Stay consultative, not pushy — focus on building trust and showing how Finideas can add value.
+
+Always keep the conversation flowing, ensuring the client feels heard and encouraged to take action.
+
+This is the first question from the client: 
+
+"""
+
 if not SUPABASE_URL or not SUPABASE_KEY:
     logger.error("Supabase credentials not found. Please check your .env file.")
 else:
@@ -45,6 +62,7 @@ async def get_chatling_response(
             logger.info(f"Found existing conversation: {conversation_id} for {bitrix_dialog_id}")
         else:
             logger.info(f"No conversation found for {bitrix_dialog_id}, Chatling will create a new one.")
+            user_message = BOT_PROMPT + user_message
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")
     

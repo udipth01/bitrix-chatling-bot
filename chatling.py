@@ -35,6 +35,26 @@ This is the first question from the client:
 
 """
 
+import re
+
+def extract_contact_info(message: str):
+    name = None
+    phone = None
+    email = None
+
+    # crude regexes for demo, refine later
+    phone_match = re.search(r'\b\d{10}\b', message)
+    if phone_match:
+        phone = phone_match.group(0)
+
+    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', message)
+    if email_match:
+        email = email_match.group(0)
+
+    return name, phone, email
+
+
+
 if not SUPABASE_URL or not SUPABASE_KEY:
     logger.error("Supabase credentials not found. Please check your .env file.")
 else:
@@ -52,6 +72,16 @@ async def get_chatling_response(
     bitrix_dialog_id: str = None
 ):
     conversation_id = None
+
+    name, phone, email = extract_contact_info(user_message)
+
+    if any([name, phone, email]):
+        supabase.table("chat_mapping").update({
+            "name": name,
+            "phone": phone,
+            "email": email
+        }).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+
     try:
         # Check Supabase for existing conversation
         result = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
@@ -73,6 +103,13 @@ async def get_chatling_response(
             }
             if conversation_id:
                 payload["conversation_id"] = conversation_id
+            else:
+                # New conversation → attach user metadata
+                payload["metadata"] = {
+                    "name": result.data[0].get("name") if result.data else None,
+                    "phone": result.data[0].get("phone") if result.data else None,
+                    "email": result.data[0].get("email") if result.data else None,
+                }
             if user_id:
                 payload["user_id"] = str(user_id)
             if ai_model_id:

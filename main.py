@@ -44,6 +44,11 @@ async def bitrix_webhook(request: Request):
     dialog_id = parsed.get("data[PARAMS][DIALOG_ID]", [""])[0]
     user_id = parsed.get("data[PARAMS][FROM_USER_ID]", [""])[0]
     work_position = parsed.get("data[USER][WORK_POSITION]", [None])[0]
+    user_name = parsed.get("data[USER][NAME]", [None])[0]
+    first_name = parsed.get("data[USER][FIRST_NAME]", [None])[0]
+    last_name = parsed.get("data[USER][LAST_NAME]", [None])[0]
+    email = parsed.get("data[USER][EMAIL]", [None])[0]   # if provided by Bitrix
+    phone = parsed.get("data[USER][PHONE]", [None])[0]   # if provided by Bitrix
 
     logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}, User ID: {user_id}")
 
@@ -69,7 +74,16 @@ async def bitrix_webhook(request: Request):
             return {"status": "ignored", "reason": "empty message"}
         
         # Check if auto mode stopped
-        record = supabase.table("chat_mapping").select("chat_status").eq("bitrix_dialog_id", dialog_id).execute()
+        # record = supabase.table("chat_mapping").select("chat_status").eq("bitrix_dialog_id", dialog_id).execute()
+        record = supabase.table("chat_mapping").upsert({
+        "bitrix_dialog_id": dialog_id,
+        "chatling_conversation_id": None,  # will be filled later
+        "name": user_name or f"{first_name} {last_name}".strip(),
+        "phone": phone,
+        "email": email,
+        "chat_status": "active"
+     }).execute()
+        
         chat_status = record.data[0]["chat_status"] if record.data else "active"
 
         if chat_status == "stopped":

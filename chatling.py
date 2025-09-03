@@ -54,22 +54,34 @@ def extract_contact_info(message: str):
     return name, phone, email
 
 async def update_chatling_contact(user_id: str, name: str, email: str = None, phone: str = None):
-    url = f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/contacts"
+    url = f"https://api.chatling.ai/v2/chatbots/{chatbot_id}/contacts"
+
     headers = {
         "Authorization": f"Bearer {CHATLING_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "external_id": user_id,   # bitrix user id
-        "name": name,
-        "email": email,
-        "phone": phone,
+        "Content-Type": "application/json"
     }
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(url, headers=headers, json=payload)
-        resp.raise_for_status()
-        return resp.json()
+    payload = {
+        "external_id": external_id,
+        "name": name,
+        "email": email,
+        "phone": phone
+    }
+
+    # Log outgoing request
+    logging.info(f"➡️ Chatling POST URL: {url}")
+    logging.info(f"➡️ Headers: {headers}")
+    logging.info(f"➡️ Payload: {payload}")
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            logging.info(f"⬅️ Chatling Response {response.status_code}: {response.text}")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logging.error(f"❌ Error updating Chatling contact: {str(e)}")
+            raise
 
 
 if not SUPABASE_URL or not SUPABASE_KEY:

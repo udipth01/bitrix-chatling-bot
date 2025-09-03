@@ -73,18 +73,35 @@ async def bitrix_webhook(request: Request):
             logger.info(f"Ignoring ONIMBOTMESSAGEADD with empty message for dialog {dialog_id}")
             return {"status": "ignored", "reason": "empty message"}
         
-        # Check if auto mode stopped
-        # record = supabase.table("chat_mapping").select("chat_status").eq("bitrix_dialog_id", dialog_id).execute()
-        record = supabase.table("chat_mapping").upsert({
-        "bitrix_dialog_id": dialog_id,
-        "chatling_conversation_id": None,  # will be filled later
-        "name": user_name or f"{first_name} {last_name}".strip(),
-        "phone": phone,
-        "email": email,
-        "chat_status": "active"
-     }).execute()
-        
-        chat_status = record.data[0]["chat_status"] if record.data else "active"
+        # Check if record exists
+        existing = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", dialog_id).execute()
+
+        if not existing.data:  # no record found → insert
+            logger.info(f"No record found for dialog {dialog_id}, inserting new mapping...")
+            supabase.table("chat_mapping").insert({
+                "bitrix_dialog_id": dialog_id,
+                "chatling_conversation_id": None,  # will be filled later
+                "name": user_name or f"{first_name} {last_name}".strip(),
+                "phone": phone,
+                "email": email,
+                "chat_status": "active"
+            }).execute()
+            chat_status = "active"
+        else:  # record exists → reuse it
+            chat_status = existing.data[0].get("chat_status", "active")
+
+
+    #     # Check if auto mode stopped
+    #     # record = supabase.table("chat_mapping").select("chat_status").eq("bitrix_dialog_id", dialog_id).execute()
+    #     record = supabase.table("chat_mapping").upsert({
+    #     "bitrix_dialog_id": dialog_id,
+    #     "chatling_conversation_id": None,  # will be filled later
+    #     "name": user_name or f"{first_name} {last_name}".strip(),
+    #     "phone": phone,
+    #     "email": email,
+    #     "chat_status": "active"
+    # }).execute()
+    #     chat_status = record.data[0]["chat_status"] if record.data else "active"
 
         if chat_status == "stopped":
             logger.info(f"Chat {dialog_id} is in STOPPED mode, ignoring message")

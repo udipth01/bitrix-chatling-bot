@@ -62,7 +62,7 @@ async def update_chatling_contact(user_id: str, name: str, email: str = None, ph
     }
 
     payload = {
-        "external_id": external_id,
+        "external_id": str(user_id),
         "name": name,
         "email": email,
         "phone": phone

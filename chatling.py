@@ -53,6 +53,23 @@ def extract_contact_info(message: str):
 
     return name, phone, email
 
+async def update_chatling_contact(user_id: str, name: str, email: str = None, phone: str = None):
+    url = f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/contacts"
+    headers = {
+        "Authorization": f"Bearer {CHATLING_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "external_id": user_id,   # bitrix user id
+        "name": name,
+        "email": email,
+        "phone": phone,
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, headers=headers, json=payload)
+        resp.raise_for_status()
+        return resp.json()
 
 
 if not SUPABASE_URL or not SUPABASE_KEY:

@@ -6,6 +6,7 @@ from bitrix import handle_bitrix_event
 import sys
 from supabase import create_client
 import os
+from chatling import update_chatling_contact
 
 load_dotenv()
 
@@ -89,6 +90,9 @@ async def bitrix_webhook(request: Request):
             chat_status = "active"
         else:  # record exists → reuse it
             chat_status = existing.data[0].get("chat_status", "active")
+
+        full_name = user_name or f"{first_name or ''} {last_name or ''}".strip()
+        await update_chatling_contact(user_id, full_name, email, phone)
 
 
     #     # Check if auto mode stopped

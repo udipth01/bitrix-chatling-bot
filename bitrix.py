@@ -3,15 +3,40 @@ from chatling import get_chatling_response
 import logging
 import sys
 import re
+import os
 
 logger = logging.getLogger("bitrix")
 
-BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.in/rest/24/79r2m74ous5yme5r/"
+BITRIX_WEBHOOK_URL = os.environ.get("BITRIX_WEBHOOK_URL")
 
-BOT_ID = 77148
-CLIENT_ID = "jdg3syzhve9ve7vv93dv4y3gs5bc31mo"
+BOT_ID = os.environ.get("BOT_ID")
+CLIENT_ID = os.environ.get("CLIENT_ID")
 
 import re
+
+async def update_lead_field(lead_id: str, field_name: str, value) -> bool:
+    """
+    Update a custom field in a Bitrix24 lead.
+    """
+    url = f"{BITRIX_WEBHOOK_URL}/crm.lead.update.json"
+    payload = {
+        "id": lead_id,
+        "fields": {
+            field_name: value
+        }
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            res = await client.post(url, json=payload)
+            res.raise_for_status()
+            data = res.json()
+            if "error" in data:
+                print("Bitrix API Error:", data["error_description"])
+                return False
+            return data.get("result", False)
+        except Exception as e:
+            print("Exception while updating lead:", e)
+            return False
 
 def clean_message_for_bitrix(message: str) -> str:
     """

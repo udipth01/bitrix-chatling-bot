@@ -104,18 +104,18 @@ async def get_chatling_response(
             if conversation_id:
                 payload["conversation_id"] = conversation_id
                 # New conversation → attach user metadata
+                # payload["metadata"] = {
+                #     "name": result.data[0].get("name") if result.data else None,
+                #     "phone": result.data[0].get("phone") if result.data else None,
+                #     "email": result.data[0].get("email") if result.data else None,
+                # }
+            else:
+                # New conversation → attach user metadata
                 payload["metadata"] = {
                     "name": result.data[0].get("name") if result.data else None,
                     "phone": result.data[0].get("phone") if result.data else None,
                     "email": result.data[0].get("email") if result.data else None,
                 }
-            # else:
-            #     # New conversation → attach user metadata
-            #     payload["metadata"] = {
-            #         "name": result.data[0].get("name") if result.data else None,
-            #         "phone": result.data[0].get("phone") if result.data else None,
-            #         "email": result.data[0].get("email") if result.data else None,
-            #     }
             if user_id:
                 payload["user_id"] = str(user_id)
             if ai_model_id:

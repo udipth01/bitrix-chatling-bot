@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from urllib.parse import parse_qs
 import logging
 from dotenv import load_dotenv
-from bitrix import handle_bitrix_event
+from bitrix import handle_bitrix_event, update_lead_field
 import sys
 from supabase import create_client
 import os
@@ -51,6 +51,20 @@ async def bitrix_webhook(request: Request):
     phone = parsed.get("data[USER][PHONE]", [None])[0]   # if provided by Bitrix
 
     logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}, User ID: {user_id}")
+
+        # 🔹 Extract LEAD ID from CHAT_ENTITY_DATA_1
+    chat_entity_data = parsed.get("data[PARAMS][CHAT_ENTITY_DATA_1]", [None])[0]
+    lead_id = None
+    if chat_entity_data:
+        parts = chat_entity_data.split("|")
+        if len(parts) > 2 and parts[1] == "LEAD":
+            lead_id = parts[2]  # 558568
+
+    logger.info(f"Event: {event}, Message: {message}, Dialog ID: {dialog_id}, Lead ID: {lead_id}")
+
+    # 🔹 If we have a lead, update the custom True/False field
+    if lead_id:
+        await update_lead_field(lead_id, "UF_CRM_1592568003637", 1)
 
         # 🔹 Detect HiddenMessage (whisper mode)
     component_id = parsed.get("data[PARAMS][PARAMS][COMPONENT_ID]", [""])[0]

@@ -12,7 +12,13 @@ BITRIX_WEBHOOK_URL = os.environ.get("BITRIX_WEBHOOK_URL")
 BOT_ID = os.environ.get("BOT_ID")
 CLIENT_ID = os.environ.get("CLIENT_ID")
 
-import re
+
+# Setup logger
+logging.basicConfig(
+    filename="bitrix.log",
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 async def update_lead_field(lead_id: str, field_name: str, value) -> bool:
     """
@@ -25,9 +31,17 @@ async def update_lead_field(lead_id: str, field_name: str, value) -> bool:
             field_name: value
         }
     }
+
+    logging.debug(f"Updating lead → {lead_id}, field → {field_name}, value → {value}")
+    logging.debug(f"Payload being sent → {payload}")
+
+
+
     async with httpx.AsyncClient() as client:
         try:
             res = await client.post(url, json=payload)
+            logging.debug(f"Bitrix response status → {res.status_code}")
+            logging.debug(f"Bitrix response body → {res.text}")
             res.raise_for_status()
             data = res.json()
             if "error" in data:
@@ -35,7 +49,7 @@ async def update_lead_field(lead_id: str, field_name: str, value) -> bool:
                 return False
             return data.get("result", False)
         except Exception as e:
-            print("Exception while updating lead:", e)
+            logging.error(f"Error updating lead {lead_id}: {e}")
             return False
 
 def clean_message_for_bitrix(message: str) -> str:

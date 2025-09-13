@@ -80,7 +80,7 @@ async def get_chatling_response(
     name, phone, email = extract_contact_info(user_message)
 
     if any([name, phone, email]):
-        chatling_contact_id = await get_or_create_chatling_contact(bitrix_dialog_id, name, phone, email)
+        chatling_contact_id = await get_or_create_chatling_contact( name, phone, email,bitrix_dialog_id)
 
 
     try:
@@ -139,7 +139,7 @@ async def get_chatling_response(
                 try:
                     insert_result = supabase.table("chat_mapping").upsert({
                         "bitrix_dialog_id": bitrix_dialog_id,
-                        "chatling_conversation_id": new_conversation_id
+                        "chatling_conversation_id": new_conversation_id,
                         "chatling_contact_id": chatling_contact_id
                     }).execute()
                     logger.info(f"Supabase insert/upsert result: {insert_result}")

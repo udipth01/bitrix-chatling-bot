@@ -169,20 +169,33 @@ async def get_chatling_response(
 
 async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitrix_dialog_id=None):
     # Check Supabase first
-    existing = await supabase.table("chat_mapping").select("chatling_contact_id").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+    try:
+        logger.info(f"🔹 get_or_create_chatling_contact called with bitrix_dialog_id={bitrix_dialog_id}, name={name}, phone={phone}, email={email}")
+        existing = await supabase.table("chat_mapping").select("chatling_contact_id").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+        logger.info(f"Supabase check for existing contact returned: {existing.data}")
+    except Exception as e:
+        logger.error(f"Error fetching from Supabase: {str(e)}")
+        existing = None
 
     chatling_contact_id = None
-    if existing.data and len(existing.data) > 0:
+    if existing and existing.data and len(existing.data) > 0:
         chatling_contact_id = existing.data[0].get("chatling_contact_id")
+        if chatling_contact_id:
+            logger.info(f"✅ Existing Chatling contact found: {chatling_contact_id}")
+            return chatling_contact_id
 
-    if chatling_contact_id is not None:
-        return chatling_contact_id
-    else:
         # Create new contact
-        contact_id = await create_chatling_contact(name=name, phone=phone, email=email)
-        if contact_id:
+    logger.info(f"⚡ No existing contact found. Creating new Chatling contact...")
+    contact_id = await create_chatling_contact(name=name, phone=phone, email=email)
+    
+    if contact_id:
+        try:
             await supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
-        return contact_id
+            logger.info(f"✅ Supabase updated with new Chatling contact: {contact_id}")
+        except Exception as e:
+            logger.error(f"Error updating Supabase with new contact: {str(e)}")
+
+    return contact_id
 
 
     # Else create new contact in Chatling

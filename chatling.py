@@ -240,7 +240,7 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
     # Else create new contact in Chatling
     # contact_id = await create_chatling_contact(name=name, phone=phone, email=email)
 
-async def create_chatling_contact(name=None, phone=None, email=None):
+async def create_chatling_contact(first_name=None,last_name=None, phone=None, email=None):
     """
     Create a new Chatling Contact and return the contact_id
     """
@@ -251,8 +251,8 @@ async def create_chatling_contact(name=None, phone=None, email=None):
     }
     payload = {
         "properties": {
-            "first_name": name or "Unknown",
-            "last_name": "",
+            "first_name": first_name or "Unknown",
+            "last_name": last_name,
             "email": email,
             "phone": phone,
             "company_name": "FinIdeas"

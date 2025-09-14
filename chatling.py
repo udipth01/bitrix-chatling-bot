@@ -118,7 +118,8 @@ async def get_chatling_response(
                 name=name,
                 phone=phone,
                 email=email,
-                bitrix_dialog_id=bitrix_dialog_id
+                bitrix_dialog_id=bitrix_dialog_id,
+                bitrix_user_info=bitrix_user_info
             )
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")

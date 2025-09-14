@@ -190,7 +190,7 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
     # Check Supabase first
     try:
         logger.info(f"🔹 get_or_create_chatling_contact called with bitrix_dialog_id={bitrix_dialog_id}, name={name}, phone={phone}, email={email}")
-        existing = await supabase.table("chat_mapping").select("chatling_contact_id").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+        existing = supabase.table("chat_mapping").select("chatling_contact_id").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
         logger.info(f"Supabase check for existing contact returned: {existing.data}")
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")
@@ -209,7 +209,7 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
 
     if contact_id:
         try:
-            await supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+            supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
             logger.info(f"✅ Supabase updated with new Chatling contact: {contact_id}")
         except Exception as e:
             logger.error(f"Error updating Supabase with new contact: {str(e)}")

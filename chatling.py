@@ -105,7 +105,8 @@ async def get_chatling_response(
                     name=name,
                     phone=phone,
                     email=email,
-                    bitrix_dialog_id=bitrix_dialog_id
+                    bitrix_dialog_id=bitrix_dialog_id,
+                    bitrix_user_info = bitrix_user_info
                 )
             logger.info(f"Found existing conversation: {conversation_id}, contact: {chatling_contact_id}")
         else:
@@ -191,7 +192,7 @@ async def get_chatling_response(
 #             supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
 #         return contact_id
 
-async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitrix_dialog_id=None):
+async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitrix_dialog_id=None,bitrix_user_info=None):
     # Check Supabase first
     try:
         logger.info(f"🔹 get_or_create_chatling_contact called with bitrix_dialog_id={bitrix_dialog_id}, name={name}, phone={phone}, email={email}")
@@ -207,10 +208,21 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
         if chatling_contact_id:
             logger.info(f"✅ Existing Chatling contact found: {chatling_contact_id}")
             return chatling_contact_id
+    
+        # Extract first and last name from Bitrix user info
+    first_name = last_name = None
+    if bitrix_user_info:
+        full_name = bitrix_user_info.get("NAME") or bitrix_user_info.get("FIRST_NAME") or "Unknown"
+        parts = full_name.split(" ", 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else ""
+        phone = phone or bitrix_user_info.get("PHONE")
+        email = email or bitrix_user_info.get("EMAIL")
+
 
         # Create new contact
     logger.info(f"⚡ No existing contact found. Creating new Chatling contact...")
-    contact_id = await create_chatling_contact(name=name, phone=phone, email=email)
+    contact_id = await create_chatling_contact(name=full_name, phone=phone, email=email)
 
     if contact_id:
         try:

@@ -68,67 +68,85 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 async def get_chatling_response(
     user_message: str,
     user_id: str = None,
+    bitrix_dialog_id: str = None,
+    bitrix_user_info: dict = None,  # Pass Bitrix user info here
     ai_model_id: int = 8,
     language_id: int = None,
-    temperature: float = None,
-    bitrix_dialog_id: str = None
+    temperature: float = None
 ):
     conversation_id = None
     chatling_contact_id = None
 
+    # Extract contact info from message
     name, phone, email = extract_contact_info(user_message)
 
-    if any([name, phone, email]):
-        chatling_contact_id = await get_or_create_chatling_contact( name, phone, email,bitrix_dialog_id)
-
+    # Fallback: Use Bitrix user info if message has no info
+    if bitrix_user_info:
+        if not name:
+            name = bitrix_user_info.get("NAME") or bitrix_user_info.get("FIRST_NAME") or "Unknown"
+        if not phone:
+            phone = bitrix_user_info.get("PHONE")
+        if not email:
+            email = bitrix_user_info.get("EMAIL")
 
     try:
-        # Check Supabase for existing conversation
+        # Fetch existing conversation & contact from Supabase
         result = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", bitrix_dialog_id).execute()
         logger.info(f"Supabase select result: {result}")
 
         if result.data and len(result.data) > 0:
             conversation_id = result.data[0].get("chatling_conversation_id")
-            chatling_contact_id = chatling_contact_id or result.data[0].get("chatling_contact_id")
-            logger.info(f"Found existing conversation: {conversation_id} for {bitrix_dialog_id}")
+            chatling_contact_id = result.data[0].get("chatling_contact_id")
+
+            # If contact ID missing, create contact
+            if not chatling_contact_id:
+                logger.info(f"⚡ Chatling contact missing for dialog {bitrix_dialog_id}. Creating new contact...")
+                chatling_contact_id = await get_or_create_chatling_contact(
+                    name=name,
+                    phone=phone,
+                    email=email,
+                    bitrix_dialog_id=bitrix_dialog_id
+                )
+            logger.info(f"Found existing conversation: {conversation_id}, contact: {chatling_contact_id}")
         else:
-            logger.info(f"No conversation found for {bitrix_dialog_id}, Chatling will create a new one.")
+            # No conversation exists; create new one
+            logger.info(f"No existing conversation for dialog {bitrix_dialog_id}. A new conversation will be created.")
             user_message = BOT_PROMPT + user_message
+            # Always create contact if missing
+            chatling_contact_id = await get_or_create_chatling_contact(
+                name=name,
+                phone=phone,
+                email=email,
+                bitrix_dialog_id=bitrix_dialog_id
+            )
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")
-    
+
+    # Prepare payload for Chatling API
+    payload = {
+        "message": user_message,
+        "conversation_id": conversation_id if conversation_id else None,
+        "contact_id": chatling_contact_id if chatling_contact_id else None,
+        "user_id": str(user_id) if user_id else None,
+        "ai_model_id": ai_model_id,
+        "language_id": language_id,
+        "temperature": temperature
+    }
+
+    # Remove keys with None values
+    payload = {k: v for k, v in payload.items() if v is not None}
+
+    headers = {
+        "Authorization": f"Bearer {CHATLING_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    logger.info(f"➡️ Sending message to Chatling API\nURL: {CHATLING_API_URL}\nPayload: {json.dumps(payload, indent=2)}")
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
-            payload = {
-                "message": user_message
-            }
-            if conversation_id:
-                payload["conversation_id"] = conversation_id
-            if chatling_contact_id:
-                payload["contact_id"] = chatling_contact_id
-            if user_id:
-                payload["user_id"] = str(user_id)
-            if ai_model_id:
-                payload["ai_model_id"] = ai_model_id
-            if language_id:
-                payload["language_id"] = language_id
-            if temperature is not None:
-                payload["temperature"] = temperature
-
-            headers = {
-                "Authorization": f"Bearer {CHATLING_API_KEY}",
-                "Content-Type": "application/json"
-            }
-
-            logger.info("Sending request to Chatling API")
-            logger.info(f"URL: {CHATLING_API_URL}")
-            logger.info(f"Payload: {json.dumps(payload, indent=2)}")
-
             response = await client.post(CHATLING_API_URL, headers=headers, json=payload)
-
-            logger.info(f"Response status: {response.status_code}")
-            logger.info(f"Response body: {response.text}")
-
+            logger.info(f"⬅️ Chatling response [{response.status_code}]: {response.text}")
             response.raise_for_status()
             data = response.json()
 
@@ -143,7 +161,7 @@ async def get_chatling_response(
                     }).execute()
                     logger.info(f"Supabase insert/upsert result: {insert_result}")
                 except Exception as e:
-                    logger.error(f"Error inserting into Supabase or linking contact: {str(e)}")
+                    logger.error(f"Error inserting into Supabase: {str(e)}")
 
             reply = data.get("data", {}).get("response", "No reply from Chatling.")
             return reply
@@ -154,6 +172,7 @@ async def get_chatling_response(
         except Exception as e:
             logger.error(f"Unexpected error sending to Chatling: {str(e)}")
             return f"Unexpected error: {str(e)}"
+
 
 # async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitrix_dialog_id=None):
 #     # Check Supabase first
@@ -187,7 +206,7 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
         # Create new contact
     logger.info(f"⚡ No existing contact found. Creating new Chatling contact...")
     contact_id = await create_chatling_contact(name=name, phone=phone, email=email)
-    
+
     if contact_id:
         try:
             await supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()

@@ -4,6 +4,7 @@ import json
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
+import re
 
 load_dotenv()  
 
@@ -34,8 +35,6 @@ Always keep the conversation flowing, ensuring the client feels heard and encour
 This is the first question from the client: 
 
 """
-
-import re
 
 def extract_contact_info(message: str):
     name = None
@@ -193,15 +192,19 @@ async def create_chatling_contact(name=None, phone=None, email=None):
     """
     Create a new Chatling Contact and return the contact_id
     """
-    url = f"https://api.chatling.ai/v2/contacts/create-contact"
+    url = f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/contacts"
     headers = {
         "Authorization": f"Bearer {CHATLING_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
-        "name": name or "Unknown",
-        "phone": phone,
-        "email": email
+        "properties": {
+            "first_name": name or "Unknown",
+            "last_name": "",
+            "email": email,
+            "phone": phone,
+            "company_name": "FinIdeas"
+        }
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -214,33 +217,10 @@ async def create_chatling_contact(name=None, phone=None, email=None):
             logger.info(f"⬅️ Chatling contact create response [{resp.status_code}] {resp.text}")
             resp.raise_for_status()
             data = resp.json()
-            contact_id = data.get("data", {}).get("contact", {}).get("id")
+            contact_id = data.get("data", {}).get("id")
             logger.info(f"Created Chatling contact: {contact_id}")
             return contact_id
         except Exception as e:
             logger.error(f"Error creating Chatling contact: {e} | Response: {resp.text if 'resp' in locals() else 'no response'}")
             return None
         
-async def update_conversation_with_contact(conversation_id: str, contact_id: str):
-    """
-    Update Chatling conversation with the given contact ID
-    """
-    url = f"https://api.chatling.ai/v2/conversations/update-conversation"
-    headers = {
-        "Authorization": f"Bearer {CHATLING_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "conversation_id": conversation_id,
-        "contact_id": contact_id
-    }
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            resp = await client.patch(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            logger.info(f"Updated conversation {conversation_id} with contact {contact_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error updating conversation with contact: {e} | Response: {resp.text if 'resp' in locals() else 'no response'}")
-            return False

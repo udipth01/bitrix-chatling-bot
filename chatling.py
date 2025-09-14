@@ -218,11 +218,14 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
         last_name = parts[1] if len(parts) > 1 else ""
         phone = phone or bitrix_user_info.get("PHONE")
         email = email or bitrix_user_info.get("EMAIL")
+    else:
+        first_name = "Unknown"
+        last_name = ""
 
 
         # Create new contact
     logger.info(f"⚡ No existing contact found. Creating new Chatling contact...")
-    contact_id = await create_chatling_contact(name=full_name, phone=phone, email=email)
+    contact_id = await create_chatling_contact(first_name=first_name,last_name = last_name, phone=phone, email=email)
 
     if contact_id:
         try:

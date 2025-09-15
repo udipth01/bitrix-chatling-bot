@@ -110,9 +110,18 @@ async def get_chatling_response(
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")
 
+    # Determine message to send
+    if conversation_id is None:
+        # First message in new conversation → prepend BOT_PROMPT
+        full_message = BOT_PROMPT + "\n" + user_message
+    else:
+        # Existing conversation → send as is
+        full_message = user_message
+
+
     # Prepare payload for Chatling API
     payload = {
-        "message": user_message,
+        "message": full_message,
         "conversation_id": conversation_id if conversation_id else None,
         "contact_id": chatling_contact_id if chatling_contact_id else None,
         "user_id": str(user_id) if user_id else None,

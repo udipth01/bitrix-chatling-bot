@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from bitrix import handle_bitrix_event, update_lead_field
 import sys
 from supabase import create_client
+from datetime import datetime, timezone
 import os
 
 load_dotenv()

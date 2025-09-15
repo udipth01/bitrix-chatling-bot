@@ -244,7 +244,7 @@ async def bitrix_webhook(request: Request):
     return {"status": "ignored", "reason": "non-message event or empty message"}
 
 
-@app.get("/")
+@app.get("/")   
 def health():
     return {"status": "alive"}
 
@@ -268,11 +268,11 @@ async def monitor_pending_messages():
                 .lte("created_at", cutoff_str) \
                 .execute()
             
-            logger.info(f"Escalating dialog {dialog_id} (msg_id={msg_id}) with message={message!r} to Chatling.ai")
+            # logger.info(f"Escalating dialog {dialog_id} (msg_id={msg_id}) with message={message!r} to Chatling.ai")
 
 
             if result.data:
-                logger.info(f"Found {len(result.data)} pending_messages older than 60 mins")
+                logger.info(f"Found {len(result.data)} pending_messages older than {MESSAGE_TIMEOUT_MINUTES} mins")
 
                 for row in result.data:
                     dialog_id = row["dialog_id"]
@@ -315,7 +315,7 @@ async def monitor_pending_messages():
                         logger.error(f"Error escalating dialog {dialog_id}: {str(e)}")
 
             else:
-                logger.info("No pending_messages older than 60 mins found")
+                logger.info("No pending_messages older than {MESSAGE_TIMEOUT_MINUTES} mins found")
 
         except Exception as e:
             logger.error(f"Error in monitor_pending_messages: {str(e)}")

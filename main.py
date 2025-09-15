@@ -289,7 +289,7 @@ async def monitor_pending_messages():
                     try:
                         # 🔹 Send to Chatling.ai
                         response = await handle_bitrix_event(
-                            event="ESCALATED",
+                            event="ONIMBOTMESSAGEADD",
                             dialog_id=dialog_id,
                             message=message,
                             user_id="system",   # system trigger

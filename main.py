@@ -13,6 +13,11 @@ load_dotenv()
 # ✅ Initialize Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Load from environment with defaults
+MESSAGE_TIMEOUT_MINUTES = int(os.getenv("MESSAGE_TIMEOUT_MINUTES", "60"))
+MONITOR_SLEEP_SECONDS = int(os.getenv("MONITOR_SLEEP_SECONDS", "60"))
+
+
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("Missing SUPABASE_URL or SUPABASE_KEY in environment")
@@ -44,6 +49,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bitrix-handler")
 
+
+logger.info(
+    f"Monitor configured with timeout={MESSAGE_TIMEOUT_MINUTES} minutes, "
+    f"sleep={MONITOR_SLEEP_SECONDS} seconds"
+)
 
 @app.post("/bitrix-handler")
 async def bitrix_webhook(request: Request):
@@ -246,7 +256,7 @@ async def monitor_pending_messages():
     while True:
         try:
             now = datetime.now(timezone.utc)
-            cutoff = now - timedelta(minutes=60)
+            cutoff = now - timedelta(minutes=MESSAGE_TIMEOUT_MINUTES)
 
             # Fetch all messages older than 60 mins
             result = supabase.table("pending_messages") \
@@ -262,6 +272,11 @@ async def monitor_pending_messages():
                     dialog_id = row["dialog_id"]
                     msg_id = row["id"]
                     message = row["message"]
+
+                    # 🔹 Only process chat72172
+                    if dialog_id != "chat72172":
+                        logger.info(f"Skipping dialog {dialog_id}, only monitoring chat72172")
+                        continue
 
                     logger.info(f"Escalating dialog {dialog_id} (msg_id={msg_id}) to Chatling.ai")
 
@@ -299,7 +314,7 @@ async def monitor_pending_messages():
         except Exception as e:
             logger.error(f"Error in monitor_pending_messages: {str(e)}")
 
-        await asyncio.sleep(60)  # check every 1 min
+        await asyncio.sleep(MONITOR_SLEEP_SECONDS)  # check every 1 min
 
 
 

@@ -2,7 +2,7 @@ import os
 import requests
 
 # Load from environment (or fallback hardcoded for quick test)
-BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.in/rest/24/79r2m74ous5yme5r/"
+BITRIX_WEBHOOK_URL = "https://finideas.bitrix24.in/rest/24/79r2m7*****"
 LEAD_ID = 558568   # replace with your test lead id
 FIELD_NAME = "UF_CRM_1592568003637"
 

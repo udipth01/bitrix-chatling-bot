@@ -12,8 +12,8 @@ logger = logging.getLogger("chatling")
 logging.basicConfig(level=logging.INFO)
 
 # Chatling v2 API details
-CHATLING_BOT_ID = "4367189383"
-CHATLING_API_KEY = "KfWnpNXL3LJ8f8872g898SP5J179DN6zyJUT488AxVW35QGl4LCS6prek7F1v3V3"
+CHATLING_BOT_ID = os.environ.get("CHATLING_BOT_ID")
+CHATLING_API_KEY = os.environ.get("CHATLING_API_KEY")
 CHATLING_API_URL = f"https://api.chatling.ai/v2/chatbots/{CHATLING_BOT_ID}/ai/kb/chat"
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")

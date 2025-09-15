@@ -119,6 +119,30 @@ async def bitrix_webhook(request: Request):
 
         if chat_status == "stopped":
             logger.info(f"Chat {dialog_id} is in STOPPED mode, ignoring message")
+                    # 🔹 Store / Append to pending_messages
+            try:
+                existing_pm = supabase.table("pending_messages").select("*").eq("dialog_id", dialog_id).eq("flushed", False).execute()
+
+                if not existing_pm.data:  
+                    # No record yet → insert new one
+                    supabase.table("pending_messages").insert({
+                        "dialog_id": dialog_id,
+                        "user_id": user_id,
+                        "message": message
+                    }).execute()
+                    logger.info(f"Inserted new pending message for dialog {dialog_id}")
+                else:
+                    # Record exists → append new message
+                    current_msg = existing_pm.data[0]["message"]
+                    new_msg = current_msg + "\n" + message  # append with newline
+                    supabase.table("pending_messages").update({
+                        "message": new_msg
+                    }).eq("id", existing_pm.data[0]["id"]).execute()
+                    logger.info(f"Appended message to existing record for dialog {dialog_id}")
+
+            except Exception as e:
+                logger.error(f"Error storing pending_messages: {str(e)}")
+
             return {"status": "ignored", "reason": "auto stopped"}
 
         # 🔹 NEW: skip internal users

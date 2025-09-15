@@ -87,6 +87,44 @@ async def bitrix_webhook(request: Request):
             logger.info(f"Ignoring ONIMBOTMESSAGEADD with empty message for dialog {dialog_id}")
             return {"status": "ignored", "reason": "empty message"}
         
+            # 🟢 If message is from INTERNAL USER (work_position present, not HiddenMessage)
+        if work_position and component_id != "HiddenMessage":
+            logger.info(f"Internal user {user_id} responded in dialog {dialog_id} with message: {message!r}")
+
+            try:
+                # fetch latest pending_messages row for this dialog
+                existing_pm = supabase.table("pending_messages") \
+                    .select("id, created_at, message") \
+                    .eq("dialog_id", dialog_id) \
+                    .eq("flushed", False) \
+                    .order("created_at", desc=True) \
+                    .limit(1) \
+                    .execute()
+
+                logger.info(f"Latest pending_messages for {dialog_id}: {existing_pm.data}")
+
+                if existing_pm.data:
+                    record_id = existing_pm.data[0]["id"]
+                    new_time = datetime.now(timezone.utc).isoformat()
+
+                    # update created_at to internal user response time
+                    update_resp = supabase.table("pending_messages") \
+                        .update({"created_at": new_time}) \
+                        .eq("id", record_id) \
+                        .execute()
+
+                    logger.info(
+                        f"Updated created_at for pending_messages id={record_id} "
+                        f"to {new_time}. Update response: {update_resp.data}"
+                    )
+                else:
+                    logger.info(f"No pending_messages found for dialog {dialog_id}, nothing to reset")
+
+            except Exception as e:
+                logger.error(f"Error resetting created_at for dialog {dialog_id}: {str(e)}")
+
+            return {"status": "ok", "action": "reset timer"}
+
         # Check if record exists
         existing = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", dialog_id).execute()
 
@@ -104,18 +142,6 @@ async def bitrix_webhook(request: Request):
         else:  # record exists → reuse it
             chat_status = existing.data[0].get("chat_status", "active")
 
-
-    #     # Check if auto mode stopped
-    #     # record = supabase.table("chat_mapping").select("chat_status").eq("bitrix_dialog_id", dialog_id).execute()
-    #     record = supabase.table("chat_mapping").upsert({
-    #     "bitrix_dialog_id": dialog_id,
-    #     "chatling_conversation_id": None,  # will be filled later
-    #     "name": user_name or f"{first_name} {last_name}".strip(),
-    #     "phone": phone,
-    #     "email": email,
-    #     "chat_status": "active"
-    # }).execute()
-    #     chat_status = record.data[0]["chat_status"] if record.data else "active"
 
         if chat_status == "stopped":
             logger.info(f"Chat {dialog_id} is in STOPPED mode, ignoring message")

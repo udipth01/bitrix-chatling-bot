@@ -202,7 +202,11 @@ async def get_or_create_chatling_contact(name=None,first_name=None,last_name=Non
 
     if contact_id:
         try:
-            supabase.table("chat_mapping").upsert({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+            supabase.table("chat_mapping").upsert({
+            "bitrix_dialog_id": bitrix_dialog_id,
+            "chatling_contact_id": contact_id
+            }).execute()
+
             logger.info(f"✅ Supabase updated with new Chatling contact: {contact_id}")
         except Exception as e:
             logger.error(f"Error updating Supabase with new contact: {str(e)}")

@@ -19,7 +19,23 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+# 🟢 Define lifespan context
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    asyncio.create_task(monitor_pending_messages())
+    logger.info("Background task for monitoring pending_messages started")
+
+    yield  # 👈 this is where the app runs
+
+    # Shutdown logic (optional)
+    logger.info("Shutting down app...")
+
+
+# 🟢 Initialize FastAPI with lifespan
+app = FastAPI(lifespan=lifespan)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -185,18 +201,14 @@ async def bitrix_webhook(request: Request):
             except Exception as e:
                 logger.error(f"Error storing pending_messages for dialog {dialog_id}: {str(e)}")
 
-
-            except Exception as e:
-                logger.error(f"Error storing pending_messages: {str(e)}")
-
             return {"status": "ignored", "reason": "auto stopped"}
 
-        # 🔹 NEW: skip internal users
-        if work_position:
-            logger.info(
-                f"Skipping Chatling call because message is from internal user {user_id} (position: {work_position})"
-            )
-            return {"status": "ignored", "reason": "internal user"}
+        # # 🔹 NEW: skip internal users
+        # if work_position:
+        #     logger.info(
+        #         f"Skipping Chatling call because message is from internal user {user_id} (position: {work_position})"
+        #     )
+        #     return {"status": "ignored", "reason": "internal user"}
         
         # Optional: filter for specific keywords
         # if "hello chatbot" in message.lower():
@@ -225,3 +237,69 @@ async def bitrix_webhook(request: Request):
 @app.get("/")
 def health():
     return {"status": "alive"}
+
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+# 🟢 Background task to check pending messages
+async def monitor_pending_messages():
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(minutes=60)
+
+            # Fetch all messages older than 60 mins
+            result = supabase.table("pending_messages") \
+                .select("id, dialog_id, message, created_at") \
+                .eq("flushed", False) \
+                .lte("created_at", cutoff.isoformat()) \
+                .execute()
+
+            if result.data:
+                logger.info(f"Found {len(result.data)} pending_messages older than 60 mins")
+
+                for row in result.data:
+                    dialog_id = row["dialog_id"]
+                    msg_id = row["id"]
+                    message = row["message"]
+
+                    logger.info(f"Escalating dialog {dialog_id} (msg_id={msg_id}) to Chatling.ai")
+
+                    try:
+                        # 🔹 Send to Chatling.ai
+                        response = await handle_bitrix_event(
+                            event="ESCALATED",
+                            dialog_id=dialog_id,
+                            message=message,
+                            user_id="system",   # system trigger
+                            bitrix_user_info={}
+                        )
+                        logger.info(f"Chatling response: {response}")
+
+                        # 🔹 Mark chat as active again
+                        supabase.table("chat_mapping") \
+                            .update({"chat_status": "active"}) \
+                            .eq("bitrix_dialog_id", dialog_id) \
+                            .execute()
+
+                        # 🔹 Delete the pending message record
+                        supabase.table("pending_messages") \
+                            .delete() \
+                            .eq("id", msg_id) \
+                            .execute()
+
+                        logger.info(f"Dialog {dialog_id}: set ACTIVE + deleted pending_messages id={msg_id}")
+
+                    except Exception as e:
+                        logger.error(f"Error escalating dialog {dialog_id}: {str(e)}")
+
+            else:
+                logger.info("No pending_messages older than 60 mins found")
+
+        except Exception as e:
+            logger.error(f"Error in monitor_pending_messages: {str(e)}")
+
+        await asyncio.sleep(60)  # check every 1 min
+
+
+

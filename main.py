@@ -132,17 +132,17 @@ async def bitrix_webhook(request: Request):
 
                 if existing_pm.data:
                     record_id = existing_pm.data[0]["id"]
-                    new_time = datetime.now(timezone.utc).isoformat()
+                    # new_time = datetime.now(timezone.utc).isoformat()
 
-                    # update created_at to internal user response time
-                    update_resp = supabase.table("pending_messages") \
-                        .update({"created_at": new_time}) \
+                    # delete pending_message record
+                    delete_resp = supabase.table("pending_messages") \
+                        .delete() \
                         .eq("id", record_id) \
                         .execute()
 
                     logger.info(
-                        f"Updated created_at for pending_messages id={record_id} "
-                        f"to {new_time}. Update response: {update_resp.data}"
+                        f"Deleted pending_messages id={record_id}. "
+                        f"Delete response: {delete_resp.data}"
                     )
                 else:
                     logger.info(f"No pending_messages found for dialog {dialog_id}, nothing to reset")

@@ -289,10 +289,10 @@ async def monitor_pending_messages():
                     msg_id = row["id"]
                     message = row["message"]
 
-                    # 🔹 Only process chat72172
-                    if dialog_id != "chat72172":
-                        logger.info(f"Skipping dialog {dialog_id}, only monitoring chat72172")
-                        continue
+                    # # 🔹 Only process chat72172
+                    # if dialog_id != "chat72172":
+                    #     logger.info(f"Skipping dialog {dialog_id}, only monitoring chat72172")
+                    #     continue
                     
                     messages_to_send.append(message)
 

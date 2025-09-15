@@ -120,25 +120,44 @@ async def bitrix_webhook(request: Request):
         if chat_status == "stopped":
             logger.info(f"Chat {dialog_id} is in STOPPED mode, ignoring message")
                     # 🔹 Store / Append to pending_messages
+        # 🔹 Store / Append to pending_messages
             try:
-                existing_pm = supabase.table("pending_messages").select("*").eq("dialog_id", dialog_id).eq("flushed", False).execute()
+                existing_pm = supabase.table("pending_messages") \
+                    .select("id,message") \
+                    .eq("dialog_id", dialog_id) \
+                    .eq("flushed", False) \
+                    .limit(1) \
+                    .execute()
 
-                if not existing_pm.data:  
+                logger.info(f"Fetched existing pending_messages for {dialog_id}: {existing_pm.data}")
+
+                if not existing_pm.data:
                     # No record yet → insert new one
                     supabase.table("pending_messages").insert({
                         "dialog_id": dialog_id,
                         "user_id": user_id,
                         "message": message
                     }).execute()
-                    logger.info(f"Inserted new pending message for dialog {dialog_id}")
+                    logger.info(f"Inserted new pending_messages row for dialog {dialog_id} with message: {message}")
                 else:
-                    # Record exists → append new message
-                    current_msg = existing_pm.data[0]["message"]
-                    new_msg = current_msg + "\n" + message  # append with newline
-                    supabase.table("pending_messages").update({
-                        "message": new_msg
-                    }).eq("id", existing_pm.data[0]["id"]).execute()
-                    logger.info(f"Appended message to existing record for dialog {dialog_id}")
+                    record = existing_pm.data[0]
+                    record_id = record["id"]
+                    old_msg = record.get("message") or ""
+                    logger.info(f"Existing message for dialog {dialog_id} (id={record_id}): {old_msg!r}")
+
+                    new_msg = (old_msg + "\n" + message).strip()
+                    logger.info(f"Appending new message. Combined message for dialog {dialog_id}: {new_msg!r}")
+
+                    update_resp = supabase.table("pending_messages") \
+                        .update({"message": new_msg}) \
+                        .eq("id", record_id) \
+                        .execute()
+
+                    logger.info(f"Update response from Supabase: {update_resp.data}")
+
+            except Exception as e:
+                logger.error(f"Error storing pending_messages for dialog {dialog_id}: {str(e)}")
+
 
             except Exception as e:
                 logger.error(f"Error storing pending_messages: {str(e)}")

@@ -136,7 +136,8 @@ async def bitrix_webhook(request: Request):
                 event=event,
                 dialog_id=dialog_id,
                 message=message,
-                user_id=user_id
+                user_id=user_id,
+                bitrix_user_info=parsed
             )
             return response
         except Exception as e:

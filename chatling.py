@@ -36,23 +36,6 @@ This is the first question from the client:
 
 """
 
-def extract_contact_info(message: str):
-    name = None
-    phone = None
-    email = None
-
-    # crude regexes for demo, refine later
-    phone_match = re.search(r'\b\d{10}\b', message)
-    if phone_match:
-        phone = phone_match.group(0)
-
-    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', message)
-    if email_match:
-        email = email_match.group(0)
-
-    return name, phone, email
-
-
 
 
 
@@ -77,17 +60,15 @@ async def get_chatling_response(
     conversation_id = None
     chatling_contact_id = None
 
-    # Extract contact info from message
-    name, phone, email = extract_contact_info(user_message)
 
     # Fallback: Use Bitrix user info if message has no info
     if bitrix_user_info:
-        if not name:
-            name = bitrix_user_info.get("NAME") or bitrix_user_info.get("FIRST_NAME") or "Unknown"
-        if not phone:
-            phone = bitrix_user_info.get("PHONE")
-        if not email:
-            email = bitrix_user_info.get("EMAIL")
+        user_name = bitrix_user_info.get("data[USER][NAME]", [None])[0]
+        first_name = bitrix_user_info.get("data[USER][FIRST_NAME]", [None])[0]
+        last_name = bitrix_user_info.get("data[USER][LAST_NAME]", [None])[0]
+        email = bitrix_user_info.get("data[USER][EMAIL]", [None])[0]   # if provided by Bitrix
+        phone = bitrix_user_info.get("data[USER][PHONE]", [None])[0]   # if provided by Bitrix
+
 
     try:
         # Fetch existing conversation & contact from Supabase
@@ -102,7 +83,9 @@ async def get_chatling_response(
             if not chatling_contact_id:
                 logger.info(f"⚡ Chatling contact missing for dialog {bitrix_dialog_id}. Creating new contact...")
                 chatling_contact_id = await get_or_create_chatling_contact(
-                    name=name,
+                    name=user_name,
+                    first_name = first_name,
+                    last_name = last_name,
                     phone=phone,
                     email=email,
                     bitrix_dialog_id=bitrix_dialog_id,
@@ -115,11 +98,13 @@ async def get_chatling_response(
             user_message = BOT_PROMPT + user_message
             # Always create contact if missing
             chatling_contact_id = await get_or_create_chatling_contact(
-                name=name,
+                name=user_name,
+                first_name = first_name,
+                last_name = last_name,
                 phone=phone,
                 email=email,
                 bitrix_dialog_id=bitrix_dialog_id,
-                bitrix_user_info=bitrix_user_info
+                bitrix_user_info = bitrix_user_info
             )
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")
@@ -193,7 +178,7 @@ async def get_chatling_response(
 #             supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
 #         return contact_id
 
-async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitrix_dialog_id=None,bitrix_user_info=None):
+async def get_or_create_chatling_contact(name=None,first_name=None,last_name=None, phone=None, email=None, bitrix_dialog_id=None,bitrix_user_info=None):
     # Check Supabase first
     try:
         logger.info(f"🔹 get_or_create_chatling_contact called with bitrix_dialog_id={bitrix_dialog_id}, name={name}, phone={phone}, email={email}")
@@ -210,27 +195,14 @@ async def get_or_create_chatling_contact(name=None, phone=None, email=None, bitr
             logger.info(f"✅ Existing Chatling contact found: {chatling_contact_id}")
             return chatling_contact_id
     
-        # Extract first and last name from Bitrix user info
-    first_name = last_name = None
-    if bitrix_user_info:
-        full_name = bitrix_user_info.get("NAME") or bitrix_user_info.get("FIRST_NAME") or "Unknown"
-        parts = full_name.split(" ", 1)
-        first_name = parts[0]
-        last_name = parts[1] if len(parts) > 1 else ""
-        phone = phone or bitrix_user_info.get("PHONE")
-        email = email or bitrix_user_info.get("EMAIL")
-    else:
-        first_name = "Unknown"
-        last_name = ""
-
 
         # Create new contact
     logger.info(f"⚡ No existing contact found. Creating new Chatling contact...")
-    contact_id = await create_chatling_contact(first_name=first_name,last_name = last_name, phone=phone, email=email)
+    contact_id = await create_chatling_contact(first_name=first_name,last_name = last_name or "", phone=phone or "", email=email or "")
 
     if contact_id:
         try:
-            supabase.table("chat_mapping").update({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
+            supabase.table("chat_mapping").upsert({"chatling_contact_id": contact_id}).eq("bitrix_dialog_id", bitrix_dialog_id).execute()
             logger.info(f"✅ Supabase updated with new Chatling contact: {contact_id}")
         except Exception as e:
             logger.error(f"Error updating Supabase with new contact: {str(e)}")

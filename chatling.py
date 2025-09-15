@@ -96,6 +96,7 @@ async def get_chatling_response(
             # No conversation exists; create new one
             logger.info(f"No existing conversation for dialog {bitrix_dialog_id}. A new conversation will be created.")
             user_message = BOT_PROMPT + user_message
+            logger.info(f"User message to be sent to bot:\n{user_message}")
             # Always create contact if missing
             chatling_contact_id = await get_or_create_chatling_contact(
                 name=user_name,

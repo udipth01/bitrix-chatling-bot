@@ -251,6 +251,14 @@ def health():
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+BOT_PROMPT_consolidate = """The user sent the following messages, which were delayed in reaching you. 
+Please read them all together and reply in a single, coherent response. 
+Begin your reply with a brief apology for the delay. 
+Do not answer each message individually.
+"""
+
+
+
 # 🟢 Background task to check pending messages
 async def monitor_pending_messages():
     while True:
@@ -274,6 +282,8 @@ async def monitor_pending_messages():
             if result.data:
                 logger.info(f"Found {len(result.data)} pending_messages older than {MESSAGE_TIMEOUT_MINUTES} mins")
 
+                messages_to_send = []
+
                 for row in result.data:
                     dialog_id = row["dialog_id"]
                     msg_id = row["id"]
@@ -283,7 +293,11 @@ async def monitor_pending_messages():
                     if dialog_id != "chat72172":
                         logger.info(f"Skipping dialog {dialog_id}, only monitoring chat72172")
                         continue
+                    
+                    messages_to_send.append(message)
 
+                    if messages_to_send:
+                        combined_message = BOT_PROMPT_consolidate + "\n\n" + "\n".join(messages_to_send)
                     logger.info(f"Escalating dialog {dialog_id} (msg_id={msg_id}) to Chatling.ai")
 
                     try:
@@ -291,7 +305,7 @@ async def monitor_pending_messages():
                         response = await handle_bitrix_event(
                             event="ONIMBOTMESSAGEADD",
                             dialog_id=dialog_id,
-                            message=message,
+                            message=combined_message,
                             user_id="system",   # system trigger
                             bitrix_user_info={}
                         )

@@ -257,13 +257,19 @@ async def monitor_pending_messages():
         try:
             now = datetime.now(timezone.utc)
             cutoff = now - timedelta(minutes=MESSAGE_TIMEOUT_MINUTES)
+            cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S%z")
+            logger.info(f"Cutoff: {cutoff} ({cutoff_str})")
+
 
             # Fetch all messages older than 60 mins
             result = supabase.table("pending_messages") \
                 .select("id, dialog_id, message, created_at") \
                 .eq("flushed", False) \
-                .lte("created_at", cutoff.isoformat()) \
+                .lte("created_at", cutoff_str) \
                 .execute()
+            
+            logger.info(f"Escalating dialog {dialog_id} (msg_id={msg_id}) with message={message!r} to Chatling.ai")
+
 
             if result.data:
                 logger.info(f"Found {len(result.data)} pending_messages older than 60 mins")

@@ -58,6 +58,7 @@ logger.info(
 
 @app.post("/bitrix-handler")
 async def bitrix_webhook(request: Request):
+    global monitor_task 
     # Read and parse request
     body_bytes = await request.body()
     body_str = body_bytes.decode("utf-8", errors="replace")

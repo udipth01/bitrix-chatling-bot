@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import os
 
 load_dotenv()
+monitor_task = None  # global reference to running monitor task
 
 # ✅ Initialize Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -30,7 +31,7 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logic
-    asyncio.create_task(monitor_pending_messages())
+    # asyncio.create_task(monitor_pending_messages())
     logger.info("Background task for monitoring pending_messages started")
 
     yield  # 👈 this is where the app runs
@@ -192,6 +193,11 @@ async def bitrix_webhook(request: Request):
                         "message": message
                     }).execute()
                     logger.info(f"Inserted new pending_messages row for dialog {dialog_id} with message: {message}")
+
+                    # 🟢 Start monitor task if not running
+                    if monitor_task is None or monitor_task.done():
+                        monitor_task = asyncio.create_task(monitor_pending_messages())
+                        logger.info("Started monitor_pending_messages task because table is not empty")
                 else:
                     record = existing_pm.data[0]
                     record_id = record["id"]
@@ -207,6 +213,8 @@ async def bitrix_webhook(request: Request):
                         .execute()
 
                     logger.info(f"Update response from Supabase: {update_resp.data}")
+                
+
 
             except Exception as e:
                 logger.error(f"Error storing pending_messages for dialog {dialog_id}: {str(e)}")
@@ -261,6 +269,7 @@ Do not answer each message individually.
 
 # 🟢 Background task to check pending messages
 async def monitor_pending_messages():
+    global monitor_task
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -322,14 +331,19 @@ async def monitor_pending_messages():
                             .delete() \
                             .eq("id", msg_id) \
                             .execute()
-
                         logger.info(f"Dialog {dialog_id}: set ACTIVE + deleted pending_messages id={msg_id}")
 
                     except Exception as e:
                         logger.error(f"Error escalating dialog {dialog_id}: {str(e)}")
 
             else:
-                logger.info("No pending_messages older than {MESSAGE_TIMEOUT_MINUTES} mins found")
+                logger.info(f"No pending_messages older than {MESSAGE_TIMEOUT_MINUTES} mins found")
+
+                count_check = supabase.table("pending_messages").select("id", count="exact").eq("flushed", False).execute()
+                if count_check.count == 0:
+                    logger.info("pending_messages table is empty. Stopping monitor task.")
+                    monitor_task = None
+                    return  
 
         except Exception as e:
             logger.error(f"Error in monitor_pending_messages: {str(e)}")

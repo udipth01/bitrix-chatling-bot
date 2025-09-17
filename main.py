@@ -7,6 +7,7 @@ import sys
 from supabase import create_client
 from datetime import datetime, timezone
 import os
+from frejun import handle_frejun_event
 
 load_dotenv()
 monitor_task = None  # global reference to running monitor task
@@ -253,6 +254,21 @@ async def bitrix_webhook(request: Request):
     return {"status": "ignored", "reason": "non-message event or empty message"}
 
 
+
+@app.post("/frejun-handler")
+async def frejun_webhook(request: Request):
+    body = await request.json()
+    logger.info(f"Frejun webhook received: {body}")
+    try:
+        response = await handle_frejun_event(body)
+        return response
+    except Exception as e:
+        logger.error(f"Error handling Frejun webhook: {str(e)}")
+        return {"status": "error", "reason": str(e)}
+
+
+
+
 @app.get("/")   
 def health():
     return {"status": "alive"}
@@ -262,7 +278,6 @@ from datetime import datetime, timedelta, timezone
 
 BOT_PROMPT_consolidate = """The user sent the following messages, which were delayed in reaching you. 
 Please read them all together and reply in a single, coherent response. 
-Begin your reply with a brief apology for the delay. 
 Do not answer each message individually.
 """
 

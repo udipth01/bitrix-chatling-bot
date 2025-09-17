@@ -68,7 +68,7 @@ def clean_message_for_bitrix(message: str) -> str:
 
 async def handle_bitrix_event(event: str, dialog_id: str, message: str, user_id: str = None,bitrix_user_info: dict = None,    instructions: list[str] | None = None):
  
-    if event == "ONIMBOTMESSAGEADD" and dialog_id and message:
+    if event == "ONIMBOTMESSAGEADD" and dialog_id and  (message or instructions):
         logger.info(
         "➡️ handle_bitrix_event → get_chatling_response args:\n"
             f"event={event}\n"

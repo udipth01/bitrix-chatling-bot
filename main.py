@@ -171,8 +171,10 @@ async def bitrix_webhook(request: Request):
                             user_id=user_id,
                             bitrix_user_info=parsed,
                             instructions=[
-                                "role": "system",
-                                "content":f"Internal context from admin (User {user_id}): {message}. Do not respond directly, only use this for context."
+                                {
+                                    "role": "system",
+                                    "content":f"Internal context from admin (User {user_id}): {message}. Do not respond directly, only use this for context."
+                                }
                             ]
                         )
                     logger.info(f"Forwarded internal user 24 message to Chatling: {message!r}")

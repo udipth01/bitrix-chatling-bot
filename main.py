@@ -159,21 +159,22 @@ async def bitrix_webhook(request: Request):
             
 
 
-        if user_id == 24:
-            try:
-                await handle_bitrix_event(
-                        event="ONIMBOTMESSAGEADD",
-                        dialog_id=dialog_id,
-                        message= BOT_PROMPT + message,
-                        user_id=user_id,
-                        bitrix_user_info=parsed
-                    )
-                logger.info(f"Forwarded internal user 24 message to Chatling: {message!r}")
-            except Exception as e:
-                logger.error(f"Error forwarding internal message for context: {e}")
-        # Instead of ignoring → send to Chatling but mark as context-only
-        else:
-            return {"status": "ok", "action": "reset timer"}
+            if user_id == 24:
+                try:
+                    await handle_bitrix_event(
+                            event="ONIMBOTMESSAGEADD",
+                            dialog_id=dialog_id,
+                            message= BOT_PROMPT + message,
+                            user_id=user_id,
+                            bitrix_user_info=parsed
+                        )
+                    logger.info(f"Forwarded internal user 24 message to Chatling: {message!r}")
+                except Exception as e:
+                    logger.error(f"Error forwarding internal message for context: {e}")
+            # Instead of ignoring → send to Chatling but mark as context-only
+            else:
+                return {"status": "ok", "action": "reset timer"}
+                logger.info(f"Ignore internal user: {message!r}")
 
         # Check if record exists
         existing = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", dialog_id).execute()

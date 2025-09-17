@@ -152,7 +152,24 @@ async def bitrix_webhook(request: Request):
             except Exception as e:
                 logger.error(f"Error resetting created_at for dialog {dialog_id}: {str(e)}")
 
-            return {"status": "ok", "action": "reset timer"}
+            # return {"status": "ok", "action": "reset timer"}
+                # Instead of ignoring → send to Chatling but mark as context-only
+            internal_note = (
+                f"[Note: Internal message from {user_name or user_id} sent to the client. "
+                f"Do not reply. Just keep this as context.]\n{message}"
+            )
+
+            try:
+                _ = await handle_bitrix_event(
+                    event="ONIMBOTMESSAGEADD",
+                    dialog_id=dialog_id,
+                    message=internal_note,
+                    user_id=user_id,
+                    bitrix_user_info=parsed
+                )
+                logger.info(f"Forwarded internal message from {user_id} to Chatling as context")
+            except Exception as e:
+                logger.error(f"Error forwarding internal message for context: {e}")
 
         # Check if record exists
         existing = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", dialog_id).execute()

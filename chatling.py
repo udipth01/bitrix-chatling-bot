@@ -122,7 +122,29 @@ async def get_chatling_response(
         # Determine message to send
     if conversation_id is None:
         # First message in new conversation → prepend BOT_PROMPT
-        instructions = BOT_PROMPT
+        instructions = [
+            {
+                "role": "system",
+                "content": BOT_PROMPT
+            }
+        ]
+    else:
+        instructions = [
+            {
+                "role": "system",
+                "content": instructions
+            }
+        ]
+
+    # Log individual variables
+    logger.info(f"user_message: {user_message}")
+    logger.info(f"conversation_id: {conversation_id}")
+    logger.info(f"chatling_contact_id: {chatling_contact_id}")
+    logger.info(f"user_id: {user_id}")
+    logger.info(f"ai_model_id: {ai_model_id}")
+    logger.info(f"language_id: {language_id}")
+    logger.info(f"temperature: {temperature}")
+    logger.info(f"instructions: {instructions}")
 
 
 
@@ -134,13 +156,11 @@ async def get_chatling_response(
         "user_id": str(user_id) if user_id else None,
         "ai_model_id": ai_model_id,
         "language_id": language_id,
-        "temperature": temperature
+        "temperature": temperature,
+        "instructions": instructions if instructions else []  # always an array
     }
 
-       # ✅ If instructions were passed, include them
-    if instructions:
-        payload["instructions"] = instructions
-
+    
     # Remove keys with None values
     payload = {k: v for k, v in payload.items() if v is not None}
 

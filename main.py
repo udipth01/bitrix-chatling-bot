@@ -152,7 +152,8 @@ async def bitrix_webhook(request: Request):
             except Exception as e:
                 logger.error(f"Error resetting created_at for dialog {dialog_id}: {str(e)}")
 
-            # return {"status": "ok", "action": "reset timer"}
+            if user_id != 24
+            return {"status": "ok", "action": "reset timer"}
                 # Instead of ignoring → send to Chatling but mark as context-only
             internal_note = (
                 f"[Note: Internal message from {user_name or user_id} sent to the client. "

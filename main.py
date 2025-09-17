@@ -163,14 +163,21 @@ async def bitrix_webhook(request: Request):
             if user_id == "24":
                 try:
                     logger.info(f"Reached inside user_id ==24:{user_id}")
+                   
+                    context_message = (
+                        "⚠️ Internal Note (from Admin/User 24):\n"
+                        f"{message}\n\n"
+                        "This message is for additional context only. Do not reply directly to it."
+                    )
                     await handle_bitrix_event(
                             event="ONIMBOTMESSAGEADD",
                             dialog_id=dialog_id,
-                            message= BOT_PROMPT + message,
+                            message= context_message,
                             user_id=user_id,
                             bitrix_user_info=parsed
                         )
                     logger.info(f"Forwarded internal user 24 message to Chatling: {message!r}")
+                    return {"status": "ok", "action": "forwarded internal user 24"}
                 except Exception as e:
                     logger.error(f"Error forwarding internal message for context: {e}")
             # Instead of ignoring → send to Chatling but mark as context-only

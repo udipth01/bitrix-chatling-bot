@@ -5,6 +5,7 @@ import sys
 import re
 import os
 import json
+from typing import Optional
 
 logger = logging.getLogger("bitrix")
 
@@ -66,18 +67,10 @@ def clean_message_for_bitrix(message: str) -> str:
     return message
 
 
-async def handle_bitrix_event(event: str, dialog_id: str, message: str, user_id: str = None,bitrix_user_info: dict = None,    instructions: list[str] | None = None):
+async def handle_bitrix_event(event: str, dialog_id: str, message: str, user_id: str = None,bitrix_user_info: dict = None,    instructions: Optional[list[str]] = None):
  
     if event == "ONIMBOTMESSAGEADD" and dialog_id and  (message or instructions):
-        logger.info(
-        "➡️ handle_bitrix_event → get_chatling_response args:\n"
-            f"event={event}\n"
-            f"dialog_id={dialog_id}\n"
-            f"message={message}\n"
-            f"user_id={user_id}\n"
-            f"bitrix_user_info={json.dumps(bitrix_user_info, indent=2) if bitrix_user_info else None}\n"
-            f"instructions={json.dumps(instructions, indent=2) if instructions else None}"
-        )
+       
         reply = await get_chatling_response(user_message = message, bitrix_dialog_id=dialog_id, user_id=user_id,bitrix_user_info= bitrix_user_info,instructions=instructions)
         cleaned_response = clean_message_for_bitrix(reply)
         await send_message_to_bitrix(dialog_id, cleaned_response)

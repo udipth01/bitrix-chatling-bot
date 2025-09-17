@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import re
+from typing import Optional
 
 load_dotenv()  
 
@@ -56,7 +57,7 @@ async def get_chatling_response(
     ai_model_id: int = 24, #using model GPT 4.1 nano
     language_id: int = None,
     temperature: float = None,
-    instructions: list[str] | None = None, 
+    instructions: Optional[list[str]] = None, 
 ):
     conversation_id = None
     chatling_contact_id = None
@@ -126,17 +127,6 @@ async def get_chatling_response(
     else:
         revised_message = user_message
         instructions = instructions
-
-    # Log individual variables
-    # logger.info(f"user_message: {revised_message}")
-    # logger.info(f"conversation_id: {conversation_id}")
-    # logger.info(f"chatling_contact_id: {chatling_contact_id}")
-    # logger.info(f"user_id: {user_id}")
-    # logger.info(f"ai_model_id: {ai_model_id}")
-    # logger.info(f"language_id: {language_id}")
-    # logger.info(f"temperature: {temperature}")
-    # logger.info(f"instructions: {instructions}")
-
 
 
     # Prepare payload for Chatling API

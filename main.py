@@ -160,7 +160,7 @@ async def bitrix_webhook(request: Request):
             logger.info(f"Reached user_id ==24:{user_id}")
 
 
-            if user_id == 24:
+            if user_id == "24":
                 try:
                     logger.info(f"Reached inside user_id ==24:{user_id}")
                     await handle_bitrix_event(

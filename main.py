@@ -157,8 +157,8 @@ async def bitrix_webhook(request: Request):
             # Instead of ignoring → send to Chatling but mark as context-only
             else:
                 internal_note = (
-                    f"[Note: Internal message from {user_name or user_id} sent to the client. "
-                    f"Do not reply. Just keep this as context.]\n{message}"
+                    f"You are receiving this message as you are monitoring the chat. You need to respond only to client while the message give is just for your reference as the internal team has already ansewerd to client. If you answer internal user question also it will confuse client which we dont want"
+                    f"So Do not reply. Just keep this as context only. This is the message\n{message}"
                 )
 
                 try:

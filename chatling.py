@@ -53,7 +53,7 @@ async def get_chatling_response(
     user_id: str = None,
     bitrix_dialog_id: str = None,
     bitrix_user_info: dict = None,  # Pass Bitrix user info here
-    ai_model_id: int = 22,
+    ai_model_id: int = 23,
     language_id: int = None,
     temperature: float = None
 ):

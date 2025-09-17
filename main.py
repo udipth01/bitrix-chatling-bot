@@ -7,7 +7,6 @@ import sys
 from supabase import create_client
 from datetime import datetime, timezone
 import os
-from frejun import handle_frejun_event
 
 load_dotenv()
 monitor_task = None  # global reference to running monitor task

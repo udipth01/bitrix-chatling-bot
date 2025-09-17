@@ -55,7 +55,8 @@ async def get_chatling_response(
     bitrix_user_info: dict = None,  # Pass Bitrix user info here
     ai_model_id: int = 24, #using model GPT 4.1 nano
     language_id: int = None,
-    temperature: float = None
+    temperature: float = None,
+    instructions: list[str] | None = None, 
 ):
     conversation_id = None
     chatling_contact_id = None
@@ -110,18 +111,24 @@ async def get_chatling_response(
     except Exception as e:
         logger.error(f"Error fetching from Supabase: {str(e)}")
 
-    # Determine message to send
+    # # Determine message to send
+    # if conversation_id is None:
+    #     # First message in new conversation → prepend BOT_PROMPT
+    #     full_message = BOT_PROMPT + "\n" + user_message
+    # else:
+    #     # Existing conversation → send as is
+    #     full_message = user_message
+
+        # Determine message to send
     if conversation_id is None:
         # First message in new conversation → prepend BOT_PROMPT
-        full_message = BOT_PROMPT + "\n" + user_message
-    else:
-        # Existing conversation → send as is
-        full_message = user_message
+        instructions = BOT_PROMPT
+
 
 
     # Prepare payload for Chatling API
     payload = {
-        "message": full_message,
+        "message": user_message,
         "conversation_id": conversation_id if conversation_id else None,
         "contact_id": chatling_contact_id if chatling_contact_id else None,
         "user_id": str(user_id) if user_id else None,
@@ -129,6 +136,10 @@ async def get_chatling_response(
         "language_id": language_id,
         "temperature": temperature
     }
+
+       # ✅ If instructions were passed, include them
+    if instructions:
+        payload["instructions"] = instructions
 
     # Remove keys with None values
     payload = {k: v for k, v in payload.items() if v is not None}

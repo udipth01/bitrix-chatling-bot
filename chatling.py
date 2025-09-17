@@ -122,22 +122,13 @@ async def get_chatling_response(
         # Determine message to send
     if conversation_id is None:
         # First message in new conversation → prepend BOT_PROMPT
-        instructions = [
-            {
-                "role": "system",
-                "content": BOT_PROMPT
-            }
-        ]
+        revised_message = BOT_PROMPT + user_message
     else:
-        instructions = [
-            {
-                "role": "system",
-                "content": instructions
-            }
-        ]
+        revised_message = user_message
+        instructions = instructions
 
     # Log individual variables
-    logger.info(f"user_message: {user_message}")
+    logger.info(f"user_message: {revised_message}")
     logger.info(f"conversation_id: {conversation_id}")
     logger.info(f"chatling_contact_id: {chatling_contact_id}")
     logger.info(f"user_id: {user_id}")
@@ -150,7 +141,7 @@ async def get_chatling_response(
 
     # Prepare payload for Chatling API
     payload = {
-        "message": user_message,
+        "message": revised_message,
         "conversation_id": conversation_id if conversation_id else None,
         "contact_id": chatling_contact_id if chatling_contact_id else None,
         "user_id": str(user_id) if user_id else None,

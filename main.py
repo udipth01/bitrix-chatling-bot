@@ -151,18 +151,17 @@ async def bitrix_webhook(request: Request):
 
             except Exception as e:
                 logger.error(f"Error resetting created_at for dialog {dialog_id}: {str(e)}")
+            
+            internal_note = (
+                    f"You are receiving this message as you are monitoring the chat. You need to respond only to client while the message give is just for your reference as the internal team has already ansewerd to client. If you answer internal user question also it will confuse client which we dont want"
+                    f"So Do not reply. Just keep this as context only. This is the message\n{message}"
+                )
 
             if user_id != 24:
                 return {"status": "ok", "action": "reset timer"}
             # Instead of ignoring → send to Chatling but mark as context-only
             else:
-                internal_note = (
-                    f"You are receiving this message as you are monitoring the chat. You need to respond only to client while the message give is just for your reference as the internal team has already ansewerd to client. If you answer internal user question also it will confuse client which we dont want"
-                    f"So Do not reply. Just keep this as context only. This is the message\n{message}"
-                )
-
-                try:
-                    _ = await handle_bitrix_event(
+                  await handle_bitrix_event(
                         event="ONIMBOTMESSAGEADD",
                         dialog_id=dialog_id,
                         message=internal_note,

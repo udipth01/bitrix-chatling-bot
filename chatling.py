@@ -128,20 +128,20 @@ async def get_chatling_response(
         instructions = instructions
 
     # Log individual variables
-    logger.info(f"user_message: {revised_message}")
-    logger.info(f"conversation_id: {conversation_id}")
-    logger.info(f"chatling_contact_id: {chatling_contact_id}")
-    logger.info(f"user_id: {user_id}")
-    logger.info(f"ai_model_id: {ai_model_id}")
-    logger.info(f"language_id: {language_id}")
-    logger.info(f"temperature: {temperature}")
-    logger.info(f"instructions: {instructions}")
+    # logger.info(f"user_message: {revised_message}")
+    # logger.info(f"conversation_id: {conversation_id}")
+    # logger.info(f"chatling_contact_id: {chatling_contact_id}")
+    # logger.info(f"user_id: {user_id}")
+    # logger.info(f"ai_model_id: {ai_model_id}")
+    # logger.info(f"language_id: {language_id}")
+    # logger.info(f"temperature: {temperature}")
+    # logger.info(f"instructions: {instructions}")
 
 
 
     # Prepare payload for Chatling API
     payload = {
-        "message": revised_message,
+        "message": revised_message if revised_message else "system-context-only",
         "conversation_id": conversation_id if conversation_id else None,
         "contact_id": chatling_contact_id if chatling_contact_id else None,
         "user_id": str(user_id) if user_id else None,

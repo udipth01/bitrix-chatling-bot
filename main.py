@@ -157,10 +157,12 @@ async def bitrix_webhook(request: Request):
             except Exception as e:
                 logger.error(f"Error resetting created_at for dialog {dialog_id}: {str(e)}")
             
+            logger.info(f"Reached user_id ==24:{user_id}")
 
 
             if user_id == 24:
                 try:
+                    logger.info(f"Reached inside user_id ==24:{user_id}")
                     await handle_bitrix_event(
                             event="ONIMBOTMESSAGEADD",
                             dialog_id=dialog_id,

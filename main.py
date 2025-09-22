@@ -23,6 +23,17 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 MESSAGE_TIMEOUT_MINUTES = int(os.getenv("MESSAGE_TIMEOUT_MINUTES", "60"))
 MONITOR_SLEEP_SECONDS = int(os.getenv("MONITOR_SLEEP_SECONDS", "60"))
 
+def log_to_supabase(dialog_id: str, user_id: str, event: str, stage: str, details: dict):
+    try:
+        supabase.table("debug_logs").insert({
+            "dialog_id": dialog_id,
+            "user_id": user_id,
+            "event": event,
+            "stage": stage,
+            "details": details
+        }).execute()
+    except Exception as e:
+        logger.error(f"Failed to insert debug log: {e}")
 
 
 if not SUPABASE_URL or not SUPABASE_KEY:
@@ -117,6 +128,12 @@ async def bitrix_webhook(request: Request):
 
     # Handle only real messages
     if event == "ONIMBOTMESSAGEADD":
+        log_to_supabase(dialog_id, user_id, event, "received", {
+        "message": message,
+        "work_position": work_position,
+        "component_id": component_id
+        })
+         
         if not message:
             logger.info(f"Ignoring ONIMBOTMESSAGEADD with empty message for dialog {dialog_id}")
             return {"status": "ignored", "reason": "empty message"}
@@ -151,37 +168,46 @@ async def bitrix_webhook(request: Request):
                         f"Deleted pending_messages id={record_id}. "
                         f"Delete response: {delete_resp.data}"
                     )
+
+                    log_to_supabase(dialog_id, user_id, event, "deleted_pending", {
+                        "pending_id": record_id,
+                        "delete_resp": delete_resp.data
+                    })
                 else:
                     logger.info(f"No pending_messages found for dialog {dialog_id}, nothing to reset")
+                    log_to_supabase(dialog_id, user_id, event, "no_pending", {
+                        "note": "No pending_messages found while internal user replied"
+                    })
 
             except Exception as e:
                 logger.error(f"Error resetting created_at for dialog {dialog_id}: {str(e)}")
             
-            logger.info(f"Reached user_id ==24:{user_id}")
+            
+            # logger.info(f"Reached user_id ==24:{user_id}")
 
 
-            if user_id == "24":
-                try:
-                    logger.info(f"Reached inside user_id ==24:{user_id}")
+            # if user_id == "24":
+            #     try:
+            #         logger.info(f"Reached inside user_id ==24:{user_id}")
                    
-                    await handle_bitrix_event(
-                            event="ONIMBOTMESSAGEADD",
-                            dialog_id=dialog_id,
-                            message= "",
-                            user_id=user_id,
-                            bitrix_user_info=parsed,
-                            instructions=[
-                               f"Internal context from admin (User {user_id}): {message}. Do not respond directly, only use this for context."
-                                ]
-                            )
-                    logger.info(f"Forwarded internal user 24 message to Chatling: {message!r}")
-                    return {"status": "ok", "action": "forwarded internal user 24"}
-                except Exception as e:
-                    logger.error(f"Error forwarding internal message for context: {e}")
-            # Instead of ignoring → send to Chatling but mark as context-only
-            else:
-                return {"status": "ok", "action": "reset timer"}
-                logger.info(f"Ignore internal user: {message!r}")
+            #         await handle_bitrix_event(
+            #                 event="ONIMBOTMESSAGEADD",
+            #                 dialog_id=dialog_id,
+            #                 message= "",
+            #                 user_id=user_id,
+            #                 bitrix_user_info=parsed,
+            #                 instructions=[
+            #                    f"Internal context from admin (User {user_id}): {message}. Do not respond directly, only use this for context."
+            #                     ]
+            #                 )
+            #         logger.info(f"Forwarded internal user 24 message to Chatling: {message!r}")
+            #         return {"status": "ok", "action": "forwarded internal user 24"}
+            #     except Exception as e:
+            #         logger.error(f"Error forwarding internal message for context: {e}")
+            # # Instead of ignoring → send to Chatling but mark as context-only
+            # else:
+            return {"status": "ok", "action": "reset timer"}
+            logger.info(f"Ignore internal user: {message!r}")
 
         # Check if record exists
         existing = supabase.table("chat_mapping").select("*").eq("bitrix_dialog_id", dialog_id).execute()
@@ -342,6 +368,12 @@ async def monitor_pending_messages():
                     msg_id = row["id"]
                     message = row["message"]
 
+                    log_to_supabase(dialog_id, pm_user_id, "monitor", "escalating", {
+                        "msg_id": msg_id,
+                        "message": message,
+                        "cutoff": cutoff.isoformat()
+                    })
+
                     # # 🔹 Only process chat72172
                     # if dialog_id != "chat72172":
                     #     logger.info(f"Skipping dialog {dialog_id}, only monitoring chat72172")
@@ -364,6 +396,11 @@ async def monitor_pending_messages():
                         )
                         logger.info(f"Chatling response: {response}")
 
+                        log_to_supabase(dialog_id, pm_user_id, "monitor", "chatling_response", {
+                            "msg_id": msg_id,
+                            "response": response
+                        })
+
                         # 🔹 Mark chat as active again
                         supabase.table("chat_mapping") \
                             .update({"chat_status": "active"}) \
@@ -375,10 +412,20 @@ async def monitor_pending_messages():
                             .delete() \
                             .eq("id", msg_id) \
                             .execute()
+                        
+                        # 🟢 log after deletion
+                        log_to_supabase(dialog_id, pm_user_id, "monitor", "deleted_pending", {
+                            "msg_id": msg_id
+                        })
+
                         logger.info(f"Dialog {dialog_id}: set ACTIVE + deleted pending_messages id={msg_id}")
 
                     except Exception as e:
                         logger.error(f"Error escalating dialog {dialog_id}: {str(e)}")
+                        log_to_supabase(dialog_id, pm_user_id, "monitor", "error", {
+                            "msg_id": msg_id,
+                            "error": str(e)
+                        })
 
             else:
                 logger.info(f"No pending_messages older than {MESSAGE_TIMEOUT_MINUTES} mins found")
@@ -391,6 +438,9 @@ async def monitor_pending_messages():
 
         except Exception as e:
             logger.error(f"Error in monitor_pending_messages: {str(e)}")
+            log_to_supabase("system", "system", "monitor", "fatal_error", {
+                "error": str(e)
+            })
 
         await asyncio.sleep(MONITOR_SLEEP_SECONDS)  # check every 1 min
 

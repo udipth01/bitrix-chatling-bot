@@ -368,7 +368,7 @@ async def monitor_pending_messages():
                     msg_id = row["id"]
                     message = row["message"]
 
-                    log_to_supabase(dialog_id, pm_user_id, "monitor", "escalating", {
+                    log_to_supabase(dialog_id, user_id, "monitor", "escalating", {
                         "msg_id": msg_id,
                         "message": message,
                         "cutoff": cutoff.isoformat()
@@ -396,7 +396,7 @@ async def monitor_pending_messages():
                         )
                         logger.info(f"Chatling response: {response}")
 
-                        log_to_supabase(dialog_id, pm_user_id, "monitor", "chatling_response", {
+                        log_to_supabase(dialog_id, user_id, "monitor", "chatling_response", {
                             "msg_id": msg_id,
                             "response": response
                         })
@@ -414,7 +414,7 @@ async def monitor_pending_messages():
                             .execute()
                         
                         # 🟢 log after deletion
-                        log_to_supabase(dialog_id, pm_user_id, "monitor", "deleted_pending", {
+                        log_to_supabase(dialog_id, user_id, "monitor", "deleted_pending", {
                             "msg_id": msg_id
                         })
 
@@ -422,7 +422,7 @@ async def monitor_pending_messages():
 
                     except Exception as e:
                         logger.error(f"Error escalating dialog {dialog_id}: {str(e)}")
-                        log_to_supabase(dialog_id, pm_user_id, "monitor", "error", {
+                        log_to_supabase(dialog_id, user_id, "monitor", "error", {
                             "msg_id": msg_id,
                             "error": str(e)
                         })

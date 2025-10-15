@@ -446,3 +446,27 @@ async def monitor_pending_messages():
 
 
 
+@app.get("/oauth")
+async def oauth_redirect(request: Request):
+    """
+    Handles the OAuth redirect from Bitrix24 Local App.
+    It will log the code to your Render logs so you can use it to fetch tokens.
+    """
+    try:
+        code = request.query_params.get("code")
+        state = request.query_params.get("state")
+
+        if not code:
+            return {"status": "error", "reason": "missing code"}
+
+        logger.info(f"✅ Received OAuth code from Bitrix: {code}, state={state}")
+
+        return {
+            "status": "success",
+            "message": "Authorization code received. Check logs for details.",
+            "code": code
+        }
+
+    except Exception as e:
+        logger.error(f"Error in /oauth redirect: {str(e)}")
+        return {"status": "error", "reason": str(e)}
